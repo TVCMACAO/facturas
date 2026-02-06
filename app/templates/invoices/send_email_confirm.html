@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Confirmar Envío de Factura por Email</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>¿Estás seguro de que deseas enviar la Factura <strong>#{{ invoice.invoice_number }}</strong> al cliente <strong>{{ invoice.client.name }}</strong> ({{ recipient_email }})?</p>
+                        
+                        <form action="{{ url_for('invoices.send_invoice_email', id=invoice.id, token=view_token) }}" method="post">
+                            <button type="submit" class="btn btn-primary">Confirmar Envío</button>
+                            <a href="{{ url_for('invoices.view_invoice', id=invoice.id, token=view_token) }}" class="btn btn-secondary">Cancelar</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

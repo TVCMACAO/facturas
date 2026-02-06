@@ -1,0 +1,605 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4">{{ title }}</h1>
+
+    <div class="row">
+        <!-- Columna Izquierda: Detalles y Ítems -->
+        <div class="col-lg-8">
+            <!-- Card de Ítems -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-file-alt me-1"></i>
+                    Ítems de la Cotización
+                </div>
+                <div class="card-body">
+                    {% if quote.items.all() %}
+                    <table class="table table-striped table-hover">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Precio Unitario</th>
+                                <th>Precio Total</th>
+                                {% if quote.status != 'facturada' %}
+                                <th>Acciones</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in quote.items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.unit_price|currency_format }}</td>
+                                <td>{{ item.total_price|currency_format }}</td>
+                                {% if quote.status != 'facturada' %}
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" 
+                                                class="btn btn-outline-warning btn-sm edit-item-btn" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editItemModal"
+                                                data-item-id="{{ item.id }}"
+                                                data-item-quantity="{{ item.quantity }}"
+                                                data-item-unit-price="{{ item.unit_price }}"
+                                                data-product-id="{{ item.product_id }}"
+                                                title="Editar ítem">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form action="{{ url_for('quotes.delete_quote_item', quote_id=quote.id, item_id=item.id) }}" method="post" style="display:inline;">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-danger btn-sm" 
+                                                    title="Quitar ítem"
+                                                    data-bs-toggle="tooltip" 
+                                                    data-bs-placement="top"
+                                                    onclick="return confirm('¿Estás seguro de que quieres eliminar este ítem?');">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>No hay ítems en esta cotización.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card para Añadir Nuevo Ítem -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-plus-circle me-1"></i>
+                    Añadir Nuevo Ítem
+                </div>
+                <div class="card-body">
+                    <form action="" method="post" novalidate {% if quote.status == 'facturada' %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
+                        {{ item_form.hidden_tag() }}
+                        <div class="form-group mb-3">
+                            {{ item_form.product_id.label(class="form-label") }}
+                            {{ item_form.product_id(class="form-control", style="width: 100%;", disabled=quote.status == 'facturada') }}
+                            {% for error in item_form.product_id.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    {{ item_form.quantity.label(class="form-label") }}
+                                    {{ item_form.quantity(class="form-control", value=1, disabled=quote.status == 'facturada') }}
+                                    {% for error in item_form.quantity.errors %}
+                                    <span class="text-danger">[{{ error }}]</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    {{ item_form.unit_price.label(class="form-label") }}
+                                    {{ item_form.unit_price(class="form-control", disabled=quote.status == 'facturada') }}
+                                    {% for error in item_form.unit_price.errors %}
+                                    <span class="text-danger">[{{ error }}]</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" name="add_item" class="btn btn-primary" {% if quote.status == 'facturada' %}disabled{% endif %}>Añadir Ítem</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Información y Acciones -->
+        <div class="col-lg-4">
+            <div class="accordion" id="accordionQuoteDetails">
+
+                <!-- Card de Información General (Initially Open) -->
+                <div class="accordion-item mb-4">
+                    <h2 class="accordion-header" id="headingGeneralInfo">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGeneralInfo" aria-expanded="true" aria-controls="collapseGeneralInfo">
+                            <i class="fas fa-info-circle me-1"></i> Información General
+                        </button>
+                    </h2>
+                    <div id="collapseGeneralInfo" class="accordion-collapse collapse show" aria-labelledby="headingGeneralInfo" data-bs-parent="#accordionQuoteDetails">
+                        <div class="accordion-body">
+                            <h5>{{ quote.client.name }}</h5>
+                            <p class="mb-1"><strong>Cotización #:</strong> {{ quote.quote_number }}</p>
+                            <p class="mb-1"><strong>Fecha:</strong> {{ quote.date.strftime('%d-%m-%Y') }}</p>
+                            <p><strong>Monto Total:</strong> <span class="h5">{{ quote.total_amount|currency_format }}</span></p>
+                            <hr>
+                            <p class="mb-1">
+                                <strong>Estado:</strong>
+                                {% if quote.status == 'facturada' %}
+                                    <span class="badge bg-success">Facturada</span>
+                                {% elif quote.status == 'aceptada' %}
+                                    <span class="badge bg-info">Aceptada</span>
+                                {% elif quote.status == 'rechazada' %}
+                                    <span class="badge bg-danger">Rechazada</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Pendiente</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card de Acciones (Initially Closed) -->
+                <div class="accordion-item mb-4">
+                    <h2 class="accordion-header" id="headingActions">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActions" aria-expanded="false" aria-controls="collapseActions">
+                            <i class="fas fa-cogs me-1"></i> Acciones
+                        </button>
+                    </h2>
+                    <div id="collapseActions" class="accordion-collapse collapse" aria-labelledby="headingActions" data-bs-parent="#accordionQuoteDetails">
+                        <div class="accordion-body">
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('quotes.generate_quote_pdf', id=quote.id, token=view_token) }}" class="btn btn-danger"><i class="fas fa-file-pdf me-2"></i>Generar PDF</a>
+                                <a href="{{ url_for('quotes.send_quote_email', id=quote.id, token=view_token) }}" class="btn btn-info"><i class="fas fa-envelope me-2"></i>Enviar por Email</a>
+                                <form action="{{ url_for('quotes.send_quote_whatsapp', id=quote.id, token=view_token) }}" method="POST" class="d-grid">
+                                    <button type="submit" class="btn btn-success"><i class="fab fa-whatsapp me-2"></i>Enviar por WhatsApp</button>
+                                </form>
+                                <a href="{{ url_for('quotes.convert_to_invoice', id=quote.id, token=view_token) }}" class="btn btn-primary {% if quote.status == 'facturada' %}disabled{% endif %}"><i class="fas fa-exchange-alt me-2"></i>Convertir a Factura</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card para Actualizar Estado (Initially Closed) -->
+                <div class="accordion-item mb-4">
+                    <h2 class="accordion-header" id="headingUpdateStatus">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUpdateStatus" aria-expanded="false" aria-controls="collapseUpdateStatus">
+                            <i class="fas fa-edit me-1"></i> Actualizar Estado
+                        </button>
+                    </h2>
+                    <div id="collapseUpdateStatus" class="accordion-collapse collapse" aria-labelledby="headingUpdateStatus" data-bs-parent="#accordionQuoteDetails">
+                        <div class="accordion-body">
+                            <form action="" method="post" novalidate {% if quote.status == 'facturada' %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
+                                {{ status_form.hidden_tag() }}
+                                <div class="form-group mb-3">
+                                    {{ status_form.status.label(class="form-label") }}
+                                    {{ status_form.status(class="form-select", disabled=quote.status == 'facturada') }}
+                                </div>
+                                <button type="submit" name="update_status" class="btn btn-secondary" {% if quote.status == 'facturada' %}disabled{% endif %}>Actualizar Estado</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card para Añadir Nuevo Ítem (Initially Closed) -->
+                <div class="accordion-item mb-4">
+                    <h2 class="accordion-header" id="headingAddItem">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAddItem" aria-expanded="false" aria-controls="collapseAddItem">
+                            <i class="fas fa-plus-circle me-1"></i> Añadir Nuevo Ítem
+                        </button>
+                    </h2>
+                    <div id="collapseAddItem" class="accordion-collapse collapse" aria-labelledby="headingAddItem" data-bs-parent="#accordionQuoteDetails">
+                        <div class="accordion-body">
+                            <form action="" method="post" novalidate {% if quote.status == 'facturada' %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
+                                {{ item_form.hidden_tag() }}
+                                <div class="form-group mb-3">
+                                    {{ item_form.product_id.label(class="form-label") }}
+                                    {{ item_form.product_id(class="form-control", style="width: 100%;", disabled=quote.status == 'facturada') }}
+                                    {% for error in item_form.product_id.errors %}
+                                    <span class="text-danger">[{{ error }}]</span>
+                                    {% endfor %}
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            {{ item_form.quantity.label(class="form-label") }}
+                                            {{ item_form.quantity(class="form-control", value=1, disabled=quote.status == 'facturada') }}
+                                            {% for error in item_form.quantity.errors %}
+                                            <span class="text-danger">[{{ error }}]</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            {{ item_form.unit_price.label(class="form-label") }}
+                                            {{ item_form.unit_price(class="form-control", disabled=quote.status == 'facturada') }}
+                                            {% for error in item_form.unit_price.errors %}
+                                            <span class="text-danger">[{{ error }}]</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" name="add_item" class="btn btn-primary" {% if quote.status == 'facturada' %}disabled{% endif %}>Añadir Ítem</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div> {# End accordion #}
+        </div> {# End col-lg-4 #}
+    </div>
+</div>
+
+<!-- Edit Item Modal -->
+<div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editItemModalLabel">Editar Ítem de Cotización</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editItemForm" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" id="edit-item-id" name="item_id">
+                    <div class="mb-3">
+                        <label for="edit-quantity" class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="edit-quantity" name="quantity" required min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-unit-price" class="form-label">Precio Unitario</label>
+                        <input type="number" step="0.01" class="form-control" id="edit-unit-price" name="unit_price" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="submit" form="editItemForm" class="btn btn-primary">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- jQuery (debe estar antes de Select2) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Inicializar tooltips de Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Inicializar Select2 en el campo de productos
+    $('#product_id').select2({
+        placeholder: 'Buscar un producto...',
+        minimumInputLength: 1,
+        ajax: {
+            url: "{{ url_for('products.search_products') }}",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term // término de búsqueda
+                };
+            },
+            processResults: function (data) {
+                var results = [];
+                $.each(data.products || [], function(index, product) {
+                    var text = product.code + ' - ' + product.name;
+                    if (product.stock_status === 'out_of_stock') {
+                        text += ' (Stock agotado)';
+                    } else if (product.stock_status === 'low_stock') {
+                        text += ' (Stock bajo: ' + product.stock + ')';
+                    }
+                    results.push({
+                        id: product.id,
+                        text: text,
+                        price: product.price,
+                        stock: product.stock,
+                        stock_status: product.stock_status
+                    });
+                });
+                return {
+                    results: results
+                };
+            },
+            templateResult: function(product) {
+                if (product.loading) {
+                    return product.text;
+                }
+                var $result = $('<span>' + product.text + '</span>');
+                if (product.stock_status === 'out_of_stock') {
+                    $result.css('color', '#dc3545');
+                } else if (product.stock_status === 'low_stock') {
+                    $result.css('color', '#ff9800');
+                }
+                return $result;
+            },
+            cache: true
+        }
+    });
+
+    // Cuando se selecciona un producto, actualizar el precio y mostrar stock
+    $('#product_id').on('select2:select', function (e) {
+        var data = e.params.data;
+        if (data.price) {
+            $('#unit_price').val(data.price);
+        }
+        
+        // Obtener stock disponible del producto
+        if (data.id) {
+            var quoteId = {{ quote.id }};
+            $.get('/products/' + data.id + '/stock', {quote_id: quoteId}, function(stockData) {
+                updateStockDisplay(stockData.available_stock);
+            });
+        }
+    });
+    
+    // Validación en tiempo real de cantidad
+    $('#quantity').on('input', function() {
+        var quantity = parseInt($(this).val()) || 0;
+        var productId = $('#product_id').val();
+        
+        if (productId && quantity > 0) {
+            var quoteId = {{ quote.id }};
+            $.get('/products/' + productId + '/stock', {quote_id: quoteId}, function(stockData) {
+                validateStockQuantity(quantity, stockData.available_stock);
+            });
+        } else {
+            hideStockWarning();
+            $('button[name="add_item"]').prop('disabled', false);
+        }
+    });
+    
+    // Función para actualizar la visualización del stock
+    function updateStockDisplay(availableStock) {
+        var stockInfo = $('#stock-info');
+        if (stockInfo.length === 0) {
+            $('#product_id').closest('.form-group').after(
+                '<div id="stock-info" class="alert mb-3" style="display: none;">' +
+                '<i class="fas fa-boxes"></i> Stock disponible: <strong id="available-stock-value">' + availableStock + '</strong>' +
+                '</div>'
+            );
+        }
+        $('#available-stock-value').text(availableStock);
+        
+        // Cambiar estilo según el stock disponible
+        if (availableStock <= 0) {
+            $('#stock-info').removeClass('alert-info').addClass('alert-danger');
+            $('#stock-info i').removeClass('fa-boxes').addClass('fa-exclamation-triangle');
+            $('#stock-info').html('<i class="fas fa-exclamation-triangle"></i> <strong>Stock agotado:</strong> No hay unidades disponibles.');
+        } else if (availableStock < 5) {
+            $('#stock-info').removeClass('alert-info alert-danger').addClass('alert-warning');
+            $('#stock-info i').removeClass('fa-exclamation-triangle').addClass('fa-boxes');
+            $('#stock-info').html('<i class="fas fa-boxes"></i> Stock disponible: <strong id="available-stock-value">' + availableStock + '</strong> (Stock bajo)');
+        } else {
+            $('#stock-info').removeClass('alert-warning alert-danger').addClass('alert-info');
+            $('#stock-info i').removeClass('fa-exclamation-triangle').addClass('fa-boxes');
+            $('#stock-info').html('<i class="fas fa-boxes"></i> Stock disponible: <strong id="available-stock-value">' + availableStock + '</strong>');
+        }
+        
+        $('#stock-info').fadeIn();
+    }
+    
+    // Función para validar cantidad vs stock disponible
+    function validateStockQuantity(quantity, availableStock) {
+        var stockWarning = $('#stock-warning');
+        var addButton = $('button[name="add_item"]');
+        
+        if (availableStock <= 0) {
+            if (stockWarning.length === 0) {
+                $('#quantity').closest('.form-group').after(
+                    '<div id="stock-warning" class="alert alert-danger mb-3">' +
+                    '<i class="fas fa-ban"></i> ' +
+                    '<strong>Stock agotado:</strong> No hay unidades disponibles para este producto.' +
+                    '</div>'
+                );
+            } else {
+                stockWarning.html(
+                    '<i class="fas fa-ban"></i> ' +
+                    '<strong>Stock agotado:</strong> No hay unidades disponibles para este producto.'
+                );
+                stockWarning.fadeIn();
+            }
+            addButton.prop('disabled', true);
+        } else if (quantity > availableStock) {
+            if (stockWarning.length === 0) {
+                $('#quantity').closest('.form-group').after(
+                    '<div id="stock-warning" class="alert alert-danger mb-3">' +
+                    '<i class="fas fa-exclamation-triangle"></i> ' +
+                    '<strong>Stock insuficiente:</strong> Disponible: ' + availableStock + ', Solicitado: ' + quantity +
+                    '</div>'
+                );
+            } else {
+                stockWarning.html(
+                    '<i class="fas fa-exclamation-triangle"></i> ' +
+                    '<strong>Stock insuficiente:</strong> Disponible: ' + availableStock + ', Solicitado: ' + quantity
+                );
+                stockWarning.fadeIn();
+            }
+            addButton.prop('disabled', true);
+        } else {
+            hideStockWarning();
+            addButton.prop('disabled', false);
+        }
+    }
+    
+    // Función para ocultar advertencia de stock
+    function hideStockWarning() {
+        $('#stock-warning').fadeOut(function() {
+            $(this).remove();
+        });
+    }
+
+    // --- Mantenemos la funcionalidad de búsqueda en la tabla de ítems existentes ---
+    var itemSearchInput = document.getElementById('itemSearchInput');
+    var quoteItemsTable = document.getElementById('quoteItemsTable');
+
+    if (itemSearchInput && quoteItemsTable) {
+        itemSearchInput.addEventListener('keyup', function() {
+            var filter = itemSearchInput.value.toLowerCase();
+            var rows = quoteItemsTable.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName('td');
+                var found = false;
+                for (var j = 0; j < cells.length; j++) {
+                    var cellText = cells[j].textContent || cells[j].innerText;
+                    if (cellText.toLowerCase().indexOf(filter) > -1) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    rows[i].style.display = "";
+                } else {
+                    rows[i].style.display = "none";
+                }
+            }
+        });
+    }
+    // JavaScript para el modal de edición de ítems
+    var currentProductId = null;
+    $('.edit-item-btn').on('click', function() {
+        var itemId = $(this).data('item-id');
+        var itemQuantity = $(this).data('item-quantity');
+        var itemUnitPrice = $(this).data('item-unit-price');
+        currentProductId = $(this).data('product-id');
+
+        $('#edit-item-id').val(itemId);
+        $('#edit-quantity').val(itemQuantity);
+        $('#edit-unit-price').val(itemUnitPrice);
+
+        // Set form action dynamically
+        $('#editItemForm').attr('action', '{{ url_for('quotes.edit_quote_item', quote_id=quote.id, item_id=0) }}'.replace('/0', '/' + itemId));
+        
+        // Obtener y mostrar stock disponible
+        if (currentProductId) {
+            var quoteId = {{ quote.id }};
+            $.get('/products/' + currentProductId + '/stock', {quote_id: quoteId}, function(stockData) {
+                updateEditStockDisplay(stockData.available_stock);
+            });
+        }
+        
+        // Limpiar advertencias previas
+        $('#edit-stock-warning').remove();
+    });
+    
+    // Validación en tiempo real para edición de cantidad
+    $(document).on('input', '#edit-quantity', function() {
+        var quantity = parseInt($(this).val()) || 0;
+        
+        if (currentProductId && quantity > 0) {
+            var quoteId = {{ quote.id }};
+            $.get('/products/' + currentProductId + '/stock', {quote_id: quoteId}, function(stockData) {
+                validateEditStockQuantity(quantity, stockData.available_stock);
+            });
+        }
+    });
+    
+    // Función para actualizar la visualización del stock en el modal de edición
+    function updateEditStockDisplay(availableStock) {
+        var stockInfo = $('#edit-stock-info');
+        if (stockInfo.length === 0) {
+            $('#edit-quantity').closest('.mb-3').after(
+                '<div id="edit-stock-info" class="alert alert-info mb-3">' +
+                '<i class="fas fa-boxes"></i> Stock disponible: <strong id="edit-available-stock-value">' + availableStock + '</strong>' +
+                '</div>'
+            );
+        } else {
+            $('#edit-available-stock-value').text(availableStock);
+        }
+    }
+    
+    // Función para validar cantidad vs stock disponible en edición
+    function validateEditStockQuantity(quantity, availableStock) {
+        var stockWarning = $('#edit-stock-warning');
+        var saveButton = $('#editItemForm button[type="submit"]');
+        
+        if (availableStock <= 0) {
+            if (stockWarning.length === 0) {
+                $('#edit-stock-info').after(
+                    '<div id="edit-stock-warning" class="alert alert-danger mb-3">' +
+                    '<i class="fas fa-ban"></i> ' +
+                    '<strong>Stock agotado:</strong> No hay unidades disponibles.' +
+                    '</div>'
+                );
+            } else {
+                stockWarning.html(
+                    '<i class="fas fa-ban"></i> ' +
+                    '<strong>Stock agotado:</strong> No hay unidades disponibles.'
+                );
+            }
+            saveButton.prop('disabled', true);
+        } else if (quantity > availableStock) {
+            if (stockWarning.length === 0) {
+                $('#edit-stock-info').after(
+                    '<div id="edit-stock-warning" class="alert alert-danger mb-3">' +
+                    '<i class="fas fa-exclamation-triangle"></i> ' +
+                    '<strong>Stock insuficiente:</strong> Disponible: ' + availableStock + ', Solicitado: ' + quantity +
+                    '</div>'
+                );
+            } else {
+                stockWarning.html(
+                    '<i class="fas fa-exclamation-triangle"></i> ' +
+                    '<strong>Stock insuficiente:</strong> Disponible: ' + availableStock + ', Solicitado: ' + quantity
+                );
+            }
+            saveButton.prop('disabled', true);
+        } else {
+            $('#edit-stock-warning').remove();
+            saveButton.prop('disabled', false);
+        }
+    }
+
+    // Handle modal form submission via AJAX
+    $('#editItemForm').on('submit', function(e) {
+        e.preventDefault(); // Prevent default form submission
+        var form = $(this);
+        var url = form.attr('action');
+        var method = form.attr('method');
+        var data = form.serialize();
+
+        $.ajax({
+            url: url,
+            type: method,
+            data: data,
+            success: function(response) {
+                if (response.success) {
+                    location.reload(); // Reload page on success
+                } else {
+                    var errorMessage = 'Error: ' + response.message;
+                    if (response.errors) {
+                        errorMessage += '\n' + response.errors.join('\n');
+                    }
+                    alert(errorMessage);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Error al guardar cambios: ' + xhr.responseText);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

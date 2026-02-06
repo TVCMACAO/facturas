@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .payments-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .payments-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+    
+    .payments-header h1 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .payments-header .subtitle {
+        margin-top: 0.5rem;
+        opacity: 0.95;
+        font-size: 1.1rem;
+    }
+    
+    .client-details-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+    
+    .client-details-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1.25rem 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .client-details-header i {
+        color: #28a745;
+        font-size: 1.25rem;
+    }
+    
+    .client-details-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .client-details-body {
+        padding: 1.5rem;
+    }
+    
+    .client-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .client-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .client-info-label {
+        color: #6c757d;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .client-info-label i {
+        color: #28a745;
+        font-size: 0.9rem;
+    }
+    
+    .client-info-value {
+        color: #2c3e50;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+    
+    .payments-section {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .payments-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .payments-section-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+    
+    .payments-section-header i {
+        color: #28a745;
+        font-size: 1.5rem;
+    }
+    
+    .payments-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .payments-table thead {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    .payments-table thead th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .payments-table tbody tr {
+        border-bottom: 1px solid #e9ecef;
+        transition: background-color 0.2s ease;
+    }
+    
+    .payments-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .payments-table tbody tr::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: #28a745;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .payments-table tbody tr:hover::after {
+        opacity: 0.3;
+    }
+    
+    .payments-table tbody td {
+        padding: 1rem;
+        color: #495057;
+        position: relative;
+    }
+    
+    .payments-table tbody td:first-child {
+        font-weight: 500;
+    }
+    
+    .invoice-link {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .invoice-link:hover {
+        color: #0056b3;
+        text-decoration: underline;
+    }
+    
+    .invoice-link i {
+        font-size: 0.875rem;
+    }
+    
+    .badge {
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .badge-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .badge-secondary {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
+    
+    .badge-info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .badge-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .no-payments {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+    
+    .no-payments i {
+        font-size: 3rem;
+        color: #dee2e6;
+        margin-bottom: 1rem;
+    }
+    
+    .no-payments p {
+        font-size: 1.1rem;
+        margin: 0;
+    }
+    
+    .btn-back {
+        margin-top: 2rem;
+        text-align: center;
+    }
+    
+    .btn-back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+    }
+    
+    .btn-back-link:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+        color: white;
+    }
+    
+    .amount-cell {
+        font-weight: 600;
+        color: #28a745;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="payments-container">
+    <div class="payments-header">
+        <h1>
+            <i class="fas fa-money-bill-wave"></i>
+            {{ title }}
+        </h1>
+        <div class="subtitle">
+            Historial de pagos para el cliente: <strong>{{ client.name }}</strong>
+        </div>
+    </div>
+    
+    <div class="client-details-card">
+        <div class="client-details-header">
+            <i class="fas fa-info-circle"></i>
+            <h2>Detalles del Cliente</h2>
+        </div>
+        <div class="client-details-body">
+            <div class="client-info-grid">
+                <div class="client-info-item">
+                    <div class="client-info-label">
+                        <i class="fas fa-user"></i>
+                        Nombre
+                    </div>
+                    <div class="client-info-value">{{ client.name }}</div>
+                </div>
+                <div class="client-info-item">
+                    <div class="client-info-label">
+                        <i class="fas fa-id-card"></i>
+                        Documento
+                    </div>
+                    <div class="client-info-value">{{ client.document_number or 'N/A' }}</div>
+                </div>
+                <div class="client-info-item">
+                    <div class="client-info-label">
+                        <i class="fas fa-envelope"></i>
+                        Email
+                    </div>
+                    <div class="client-info-value">{{ client.email }}</div>
+                </div>
+                <div class="client-info-item">
+                    <div class="client-info-label">
+                        <i class="fas fa-phone"></i>
+                        Teléfono
+                    </div>
+                    <div class="client-info-value">{{ client.phone or 'N/A' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="payments-section">
+        <div class="payments-section-header">
+            <i class="fas fa-list-ul"></i>
+            <h2>Pagos Registrados</h2>
+        </div>
+        
+        {% if payments %}
+        <div class="table-responsive">
+            <table class="payments-table">
+                <thead>
+                    <tr>
+                        <th>Fecha del Pago</th>
+                        <th>Monto</th>
+                        <th>Método</th>
+                        <th>Factura #</th>
+                        <th>Monto Total Factura</th>
+                        <th>Estado Factura</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr>
+                        <td>
+                            <i class="fas fa-calendar-alt" style="color: #6c757d; margin-right: 0.5rem;"></i>
+                            {{ payment.payment_date.strftime('%d-%m-%Y') }}
+                        </td>
+                        <td class="amount-cell">{{ payment.amount|currency_format }}</td>
+                        <td>
+                            <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                {% if payment.method.lower() == 'transferencia' %}
+                                    <i class="fas fa-exchange-alt" style="color: #28a745;"></i>
+                                {% elif payment.method.lower() == 'efectivo' %}
+                                    <i class="fas fa-money-bill" style="color: #28a745;"></i>
+                                {% elif payment.method.lower() == 'tarjeta' %}
+                                    <i class="fas fa-credit-card" style="color: #28a745;"></i>
+                                {% else %}
+                                    <i class="fas fa-wallet" style="color: #28a745;"></i>
+                                {% endif %}
+                                {{ payment.method.capitalize() }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('invoices.view_invoice', id=payment.invoice.id, token=(payment.invoice.id|view_token('invoice'))) }}" class="invoice-link">
+                                {{ payment.invoice.invoice_number }}
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </td>
+                        <td class="amount-cell">{{ payment.invoice.total_amount|currency_format }}</td>
+                        <td>
+                            {% if payment.invoice.status == 'pagada' %}
+                                <span class="badge badge-success">Pagada</span>
+                            {% elif payment.invoice.status == 'vencida' %}
+                                <span class="badge badge-danger">Vencida</span>
+                            {% elif payment.invoice.status == 'anulada' %}
+                                <span class="badge badge-secondary">Anulada</span>
+                            {% elif payment.invoice.status == 'parcial' %}
+                                <span class="badge badge-info">Parcial</span>
+                            {% else %}
+                                <span class="badge badge-warning">No Pagada</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="no-payments">
+            <i class="fas fa-inbox"></i>
+            <p>No hay pagos registrados para este cliente.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="btn-back">
+        <a href="{{ url_for('clients.list_clients') }}" class="btn-back-link">
+            <i class="fas fa-arrow-left"></i>
+            Volver a Clientes
+        </a>
+    </div>
+</div>
+{% endblock %}

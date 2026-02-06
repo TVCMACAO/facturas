@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 50%, #17a2b8 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+        position: relative;
+    }
+    
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(circle at 20% 50%, rgba(40, 167, 69, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(32, 201, 151, 0.3) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    
+    .container.mt-4 {
+        margin-top: 0 !important;
+        padding: 0;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .login-container {
+        min-height: calc(100vh - 76px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 24px;
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.15),
+            0 0 0 1px rgba(255, 255, 255, 0.5);
+        padding: 3.5rem;
+        width: 100%;
+        max-width: 450px;
+        border: none;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: slideUp 0.6s ease-out;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .login-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 
+            0 30px 80px rgba(0, 0, 0, 0.2),
+            0 0 0 1px rgba(255, 255, 255, 0.6);
+    }
+    
+    .login-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    .login-header h1 {
+        color: #1a202c;
+        font-weight: 800;
+        font-size: 2.25rem;
+        margin-bottom: 0.75rem;
+        letter-spacing: -0.5px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .login-header h1 i {
+        -webkit-text-fill-color: #28a745;
+        background: none;
+    }
+    
+    .login-header p {
+        color: #718096;
+        font-size: 1rem;
+        margin: 0;
+        font-weight: 500;
+    }
+    
+    .form-group-icon {
+        position: relative;
+        margin-bottom: 1.75rem;
+    }
+    
+    .form-group-icon i {
+        position: absolute;
+        left: 18px;
+        top: calc(50% + 0.5em);
+        transform: translateY(-50%);
+        color: #28a745;
+        font-size: 1.15rem;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 22px;
+        width: 22px;
+        line-height: 1;
+        transition: all 0.3s ease;
+    }
+    
+    .form-group-icon:focus-within i {
+        color: #20c997;
+        transform: translateY(-50%) scale(1.1);
+    }
+    
+    .form-group-icon input {
+        padding-left: 50px;
+        height: 54px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 1rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        line-height: 1.5;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        background: #ffffff;
+        color: #1a202c;
+    }
+    
+    .form-group-icon input::placeholder {
+        color: #a0aec0;
+        font-weight: 400;
+    }
+    
+    .form-group-icon input:hover {
+        border-color: #cbd5e0;
+        background: #f7fafc;
+    }
+    
+    .form-group-icon input:focus {
+        border-color: #28a745;
+        box-shadow: 
+            0 0 0 4px rgba(40, 167, 69, 0.1),
+            0 4px 12px rgba(40, 167, 69, 0.15);
+        outline: none;
+        background: #ffffff;
+        transform: translateY(-1px);
+    }
+    
+    .form-group-icon label {
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.625rem;
+        font-size: 0.875rem;
+        letter-spacing: 0.025em;
+        text-transform: uppercase;
+        display: block;
+    }
+    
+    .remember-me {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.75rem;
+    }
+    
+    .form-check-input {
+        width: 1.25rem;
+        height: 1.25rem;
+        border: 2px solid #cbd5e0;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .form-check-input:checked {
+        background-color: #28a745;
+        border-color: #28a745;
+        box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+    }
+    
+    .form-check-input:focus {
+        box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+    }
+    
+    .form-check-label {
+        color: #4a5568;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        margin-left: 0.5rem;
+        user-select: none;
+    }
+    
+    .btn-login {
+        width: 100%;
+        height: 56px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: white;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 
+            0 8px 24px rgba(40, 167, 69, 0.4),
+            0 0 0 0 rgba(40, 167, 69, 0.5);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-login::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-login:hover::before {
+        left: 100%;
+    }
+    
+    .btn-login:hover {
+        transform: translateY(-3px);
+        box-shadow: 
+            0 12px 32px rgba(40, 167, 69, 0.5),
+            0 0 0 4px rgba(40, 167, 69, 0.1);
+        background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+    }
+    
+    .btn-login:active {
+        transform: translateY(-1px);
+        box-shadow: 
+            0 6px 20px rgba(40, 167, 69, 0.4),
+            0 0 0 2px rgba(40, 167, 69, 0.2);
+    }
+    
+    .login-footer {
+        text-align: center;
+        margin-top: 2.5rem;
+        padding-top: 2rem;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    .login-footer a {
+        color: #28a745;
+        text-decoration: none;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        display: inline-block;
+        margin: 0.5rem 0;
+        position: relative;
+    }
+    
+    .login-footer a::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        transition: width 0.3s ease;
+    }
+    
+    .login-footer a:hover {
+        color: #20c997;
+    }
+    
+    .login-footer a:hover::after {
+        width: 100%;
+    }
+    
+    .login-footer p {
+        margin: 0;
+        color: #718096;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+    
+    .divider {
+        text-align: center;
+        margin: 1.75rem 0;
+        position: relative;
+        color: #a0aec0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .divider::before,
+    .divider::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 35%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+    }
+    
+    .divider::before {
+        left: 0;
+    }
+    
+    .divider::after {
+        right: 0;
+    }
+    
+    .invalid-feedback {
+        color: #e53e3e;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        display: block;
+        font-weight: 600;
+        padding-left: 4px;
+        animation: shake 0.3s ease;
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+    
+    @media (max-width: 576px) {
+        .login-card {
+            padding: 2.5rem 1.75rem;
+            margin: 1rem;
+            border-radius: 20px;
+        }
+        
+        .login-header h1 {
+            font-size: 1.875rem;
+        }
+        
+        .login-header {
+            margin-bottom: 2.5rem;
+        }
+        
+        .form-group-icon {
+            margin-bottom: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h1><i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión</h1>
+            <p>Ingresa tus credenciales para acceder</p>
+        </div>
+        
+        <form action="" method="post" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group-icon">
+                <label for="{{ form.username.id }}">{{ form.username.label.text }}</label>
+                <i class="fas fa-user"></i>
+                <input type="text" 
+                       id="{{ form.username.id }}" 
+                       name="{{ form.username.name }}" 
+                       class="form-control" 
+                       placeholder="Ingresa tu usuario" 
+                       autocomplete="username"
+                       required>
+                {% for error in form.username.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group-icon">
+                <label for="{{ form.password.id }}">{{ form.password.label.text }}</label>
+                <i class="fas fa-lock"></i>
+                <input type="password" 
+                       id="{{ form.password.id }}" 
+                       name="{{ form.password.name }}" 
+                       class="form-control" 
+                       placeholder="Ingresa tu contraseña" 
+                       autocomplete="current-password"
+                       required>
+                {% for error in form.password.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="remember-me">
+                <div class="form-check">
+                    {{ form.remember_me(class="form-check-input") }}
+                    {{ form.remember_me.label(class="form-check-label") }}
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-login">
+                <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+            </button>
+        </form>
+        
+        <div class="login-footer">
+            <a href="{{ url_for('main.request_password_reset') }}">
+                <i class="fas fa-key me-1"></i>¿Olvidaste tu contraseña?
+            </a>
+            <div class="divider">o</div>
+            <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
+                ¿Nuevo usuario? 
+                <a href="{{ url_for('main.register') }}">¡Regístrate aquí!</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

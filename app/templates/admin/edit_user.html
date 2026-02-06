@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import render_field %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mt-4">{{ title }}</h1>
+    <hr>
+    <div class="row">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="" novalidate>
+                        {{ form.hidden_tag() }}
+                        {{ render_field(form.username) }}
+                        {{ render_field(form.email) }}
+                        {{ render_field(form.role, class_name="form-select") }}
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+                            <a href="{{ url_for('admin.list_users') }}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

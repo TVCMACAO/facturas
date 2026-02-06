@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+    
+    .container.mt-4 {
+        margin-top: 0 !important;
+        padding: 0;
+    }
+    
+    .login-container {
+        min-height: calc(100vh - 76px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+    
+    .login-card {
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        padding: 3rem;
+        width: 100%;
+        max-width: 450px;
+        border: none;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .login-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+    }
+    
+    .login-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+    
+    .login-header h1 {
+        color: #2c3e50;
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .login-header p {
+        color: #7f8c8d;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+    
+    .form-group-icon {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group-icon i {
+        position: absolute;
+        left: 15px;
+        top: calc(50% + 0.5em);
+        transform: translateY(-50%);
+        color: #28a745;
+        font-size: 1.1rem;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 20px;
+        width: 20px;
+        line-height: 1;
+    }
+    
+    .form-group-icon input {
+        padding-left: 45px;
+        height: 50px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        line-height: 1.5;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+    
+    .form-group-icon input:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.15);
+        outline: none;
+    }
+    
+    .form-group-icon label {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .remember-me {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-check-input:checked {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+    
+    .form-check-label {
+        color: #555;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    
+    .btn-login {
+        width: 100%;
+        height: 50px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: white;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+    
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        background: linear-gradient(135deg, #218838 0%, #1ea080 100%);
+    }
+    
+    .btn-login:active {
+        transform: translateY(0);
+    }
+    
+    .login-footer {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .login-footer a {
+        color: #28a745;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s ease;
+        display: inline-block;
+        margin: 0.5rem 0;
+    }
+    
+    .login-footer a:hover {
+        color: #218838;
+        text-decoration: underline;
+    }
+    
+    .divider {
+        text-align: center;
+        margin: 1.5rem 0;
+        position: relative;
+        color: #7f8c8d;
+        font-size: 0.85rem;
+    }
+    
+    .divider::before,
+    .divider::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 40%;
+        height: 1px;
+        background: #e0e0e0;
+    }
+    
+    .divider::before {
+        left: 0;
+    }
+    
+    .divider::after {
+        right: 0;
+    }
+    
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
+    
+    @media (max-width: 576px) {
+        .login-card {
+            padding: 2rem 1.5rem;
+            margin: 1rem;
+        }
+        
+        .login-header h1 {
+            font-size: 1.75rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h1><i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión</h1>
+            <p>Ingresa tus credenciales para acceder</p>
+        </div>
+        
+        <form action="" method="post" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group-icon">
+                <label for="{{ form.username.id }}">{{ form.username.label.text }}</label>
+                <i class="fas fa-user"></i>
+                {{ form.username(size=32, class="form-control", placeholder="Ingresa tu usuario") }}
+                {% for error in form.username.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group-icon">
+                <label for="{{ form.password.id }}">{{ form.password.label.text }}</label>
+                <i class="fas fa-lock"></i>
+                {{ form.password(size=32, class="form-control", placeholder="Ingresa tu contraseña") }}
+                {% for error in form.password.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="remember-me">
+                <div class="form-check">
+                    {{ form.remember_me(class="form-check-input") }}
+                    {{ form.remember_me.label(class="form-check-label") }}
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-login">
+                <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+            </button>
+        </form>
+        
+        <div class="login-footer">
+            <a href="{{ url_for('main.request_password_reset') }}">
+                <i class="fas fa-key me-1"></i>¿Olvidaste tu contraseña?
+            </a>
+            <div class="divider">o</div>
+            <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
+                ¿Nuevo usuario? 
+                <a href="{{ url_for('main.register') }}">¡Regístrate aquí!</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

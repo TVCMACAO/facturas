@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Factura {{ invoice.invoice_number }}</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 0.5in;
+        }
+        body {
+            font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+            font-size: 10px;
+            color: #333;
+        }
+        .header-table, .main-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .header-table td {
+            vertical-align: top;
+        }
+        .logo {
+            width: 254px;
+            height: auto;
+        }
+        .company-details {
+            text-align: right;
+        }
+        .company-details h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #2c6e49; /* Un verde corporativo */
+        }
+        .invoice-details {
+            text-align: right;
+        }
+        .invoice-details p {
+            margin: 2px 0;
+        }
+        .section-title {
+            background-color: #ffebee; /* Light Red */
+            color: #c62828; /* Dark Red Text */
+            padding: 5px;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #c62828; /* Dark Red Border */
+        }
+        .client-info {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+        }
+        .main-table th, .main-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 12px; /* Increased font size by 2 points */
+        }
+        .main-table thead {
+            background-color: #2c6e49;
+            color: white;
+        }
+        .main-table th {
+            font-weight: bold;
+        }
+        .main-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .totals {
+            width: 40%;
+            float: right;
+            margin-top: 20px;
+        }
+        .totals table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals td {
+            padding: 5px;
+        }
+        .totals .label {
+            font-weight: bold;
+            text-align: right;
+        }
+        .totals .amount {
+            text-align: right;
+            width: 50%;
+        }
+        .grand-total {
+            font-size: 14px;
+            font-weight: bold;
+            background-color: #2c6e49;
+            color: white;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0.2in;
+            left: 0;
+            right: 0;
+            height: auto; /* Allow content to expand */
+            text-align: center;
+            font-size: 12px; /* Increased font size to 12px */
+            border-top: 1px solid #ddd;
+            padding-top: 5px;
+            border: 1px solid red; /* Temporary border for debugging */
+        }
+    </style>
+</head>
+<body>
+    <table class="header-table">
+        <tr>
+            <td>
+                {% if logo_path and '1.png' in logo_path %}
+                <img src="{{ logo_path }}" alt="Logo" class="logo">
+                {% endif %}
+            </td>
+            <td class="company-details">
+                <h1>Hemmis laverde</h1>
+                <p>NIT: 1.067.896.086</p>
+                <p>Tienda Virtual</p>
+                <p>+57 3017914668 | ing.hclz@gmail.com</p>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-title">FACTURA</div>
+
+    <table class="header-table">
+        <tr>
+            <td style="width: 60%;">
+                <div class="client-info">
+                    <strong>CLIENTE:</strong><br>
+                    {{ invoice.client.name }}<br>
+                    {% if invoice.client.document_number %}C.C./NIT: {{ invoice.client.document_number }}<br>{% endif %}
+                    {% if invoice.client.contact_person %}Contacto: {{ invoice.client.contact_person }}<br>{% endif %}
+                    {{ invoice.client.address }}<br>
+                    {{ invoice.client.email }} | {{ invoice.client.phone }}
+                </div>
+            </td>
+            <td style="width: 40%;">
+                <div class="invoice-details">
+                    <p><strong>NÚMERO DE FACTURA:</strong></p>
+                    <p style="font-size: 16px; color: #d9534f;">{{ invoice.invoice_number }}</p>
+                    <p><strong>FECHA:</strong></p>
+                    <p>{{ invoice.date.strftime('%d/%m/%Y') }}</p>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="main-table">
+        <thead>
+            <tr>
+                <th style="width: 55%;">ÍTEM</th>
+                <th style="width: 15%; text-align: right;">PRECIO</th>
+                <th style="width: 10%; text-align: center;">CANTIDAD</th>
+                <th style="width: 20%; text-align: right;">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in invoice.items %}
+            <tr>
+                <td><strong>{{ item.product.code }}</strong> - {{ item.product.name }}</td>
+                <td style="text-align: right;">{{ item.unit_price|currency_format }}</td>
+                <td style="text-align: center;">{{ item.quantity }}</td>
+                <td style="text-align: right;">{{ item.total_price|currency_format }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <table>
+            <tr>
+                <td class="label">SUBTOTAL:</td>
+                <td class="amount">{{ invoice.total_amount|currency_format }}</td>
+            </tr>
+            <tr>
+                <td class="label">Descuento:</td>
+                <td class="amount">{{ 0|currency_format }}</td>
+            </tr>
+            <tr>
+                <td class="label">SUBTOTAL (Neto):</td>
+                <td class="amount">{{ invoice.total_amount|currency_format }}</td>
+            </tr>
+            <tr>
+                <td class="label">IVA (0%):</td>
+                <td class="amount">{{ 0|currency_format }}</td>
+            </tr>
+            <tr class="grand-total">
+                <td class="label">TOTAL:</td>
+                <td class="amount">{{ invoice.total_amount|currency_format }}</td>
+            </tr>
+        </table>
+        <p style="font-weight: bold; margin-top: 10px;">SON: {{ amount_in_words }}</p>
+    </div>
+
+    <div class="footer">
+        <p><strong>Datos Bancarios:</strong> Número de cuenta ahorros N° 466278595 de BBVA | Nequi: 3017914668</p>
+        <p>Si tienes alguna pregunta, contáctanos. ¡Gracias por tu compra!</p>
+    </div>
+
+</body>
+</html>

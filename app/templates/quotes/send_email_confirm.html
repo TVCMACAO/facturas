@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mt-4">{{ title }}</h1>
+    <div class="card mb-4">
+        <div class="card-header">
+            Confirmar Envío de Correo
+        </div>
+        <div class="card-body">
+            <p>Estás a punto de enviar la cotización <strong>#{{ quote.quote_number }}</strong> al cliente <strong>{{ quote.client.name }}</strong> ({{ recipient_email }}).</p>
+            <p>¿Deseas continuar?</p>
+            <form action="{{ url_for('quotes.send_quote_email', id=quote.id, token=view_token) }}" method="post">
+                <button type="submit" class="btn btn-primary">Confirmar Envío</button>
+                <a href="{{ url_for('quotes.view_quote', id=quote.id, token=view_token) }}" class="btn btn-secondary ms-2">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

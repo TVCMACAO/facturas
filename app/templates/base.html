@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %} - Sistema de Cotizaciones</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .navbar {
+            flex-shrink: 0;
+        }
+        
+        .navbar-nav .nav-link {
+            color: white !important; /* Force white color */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Add subtle shadow for contrast */
+        }
+        
+        .container.mt-4,
+        .container-fluid {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        
+        /* Ajustar para páginas con poco contenido */
+        .container.mt-4 > *,
+        .container-fluid > * {
+            flex-shrink: 0;
+        }
+        
+        /* Estándar de tamaño de fuente para todas las tablas */
+        table tbody td {
+            font-size: 0.9rem !important;
+        }
+        
+        /* Estándar para campos específicos de tablas */
+        table tbody td .product-code,
+        table tbody td .product-name,
+        table tbody td .product-description,
+        table tbody td .product-price,
+        table tbody td .product-stock,
+        table tbody td .client-name,
+        table tbody td .client-document,
+        table tbody td .client-contact,
+        table tbody td .client-email,
+        table tbody td .client-phone,
+        table tbody td .quote-number,
+        table tbody td .quote-date,
+        table tbody td .quote-client,
+        table tbody td .quote-amount,
+        table tbody td .invoice-number,
+        table tbody td .invoice-date,
+        table tbody td .invoice-client,
+        table tbody td .invoice-amount {
+            font-size: 0.9rem !important;
+        }
+        
+        /* Estilos para mensajes flash como tarjetas */
+        .flash-messages-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1050;
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .flash-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-left: 4px solid;
+            animation: slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 4.7s forwards;
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .flash-card.success {
+            border-left-color: #28a745;
+        }
+        
+        .flash-card.danger {
+            border-left-color: #dc3545;
+        }
+        
+        .flash-card.warning {
+            border-left-color: #ffc107;
+        }
+        
+        .flash-card.info {
+            border-left-color: #17a2b8;
+        }
+        
+        .flash-card-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        
+        .flash-card.success .flash-card-icon {
+            color: #28a745;
+        }
+        
+        .flash-card.danger .flash-card-icon {
+            color: #dc3545;
+        }
+        
+        .flash-card.warning .flash-card-icon {
+            color: #ffc107;
+        }
+        
+        .flash-card.info .flash-card-icon {
+            color: #17a2b8;
+        }
+        
+        .flash-card-message {
+            flex: 1;
+            font-size: 0.95rem;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .flash-card-close {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        
+        .flash-card-close:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+            color: #2c3e50;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .flash-messages-container {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+    </style>
+    {% block styles %}{% endblock %}
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-5" href="{{ url_for('main.index') }}">Cotizador</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('clients.list_clients') }}">Clientes</a>
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('products.list_products') }}">Productos</a>
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('quotes.list_quotes') }}">Cotizaciones</a>
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('invoices.list_invoices') }}">Facturas</a>
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('inventory.list_inventory') }}">Inventario</a>
+                        {% if current_user.role == 'admin' %}
+                            <a class="nav-link fw-bold fs-6" href="{{ url_for('admin.list_users') }}">Admin Usuarios</a>
+                        {% endif %}
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.logout') }}">Cerrar Sesión</a>
+                    {% else %}
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.index') }}">Inicio</a>
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.login') }}">Iniciar Sesión</a>
+                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.register') }}">Registrarse</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- Flash Messages Container -->
+    <div class="flash-messages-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash-card {{ category }}" role="alert">
+                <div class="flash-card-icon">
+                    {% if category == 'success' %}
+                        <i class="fas fa-check-circle"></i>
+                    {% elif category == 'danger' %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% elif category == 'warning' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                    {% elif category == 'info' %}
+                        <i class="fas fa-info-circle"></i>
+                    {% else %}
+                        <i class="fas fa-bell"></i>
+                    {% endif %}
+                </div>
+                <div class="flash-card-message">{{ message }}</div>
+                <button type="button" class="flash-card-close" onclick="this.parentElement.remove()" aria-label="Cerrar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+    
+    <div class="container" style="margin-top: 1rem; margin-bottom: 1rem;">
+        {% block content %}{% endblock %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-remover mensajes flash después de 5 segundos
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashCards = document.querySelectorAll('.flash-card');
+            flashCards.forEach(function(card) {
+                setTimeout(function() {
+                    card.style.animation = 'fadeOut 0.3s ease-in forwards';
+                    setTimeout(function() {
+                        card.remove();
+                    }, 300);
+                }, 5000);
+            });
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

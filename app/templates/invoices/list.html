@@ -1,0 +1,659 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .invoices-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+    
+    .invoices-header h1 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .search-card {
+        background: white;
+        border-radius: 7.5px;
+        padding: 0.75rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+    }
+    
+    .search-card .row {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    
+    .search-card .form-label {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
+    }
+    
+    .search-card .form-control,
+    .search-card .form-select {
+        border: 1px solid #e0e0e0;
+        border-radius: 5px;
+        padding: 0.375rem;
+        transition: all 0.3s ease;
+        font-size: 0.6rem;
+    }
+    
+    .search-card .form-control:focus,
+    .search-card .form-select:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.1rem rgba(40, 167, 69, 0.15);
+        outline: none;
+    }
+    
+    .btn-search-invoices {
+        height: 25px;
+        width: 25px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        border-radius: 5px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.75rem;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+    
+    .btn-search-invoices:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        color: white;
+    }
+    
+    .btn-clear-invoices {
+        height: 25px;
+        width: 25px;
+        background: white;
+        border: 1px solid #6c757d;
+        border-radius: 5px;
+        color: #6c757d;
+        font-weight: 600;
+        font-size: 0.75rem;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        text-decoration: none;
+    }
+    
+    .btn-clear-invoices:hover {
+        background: #6c757d;
+        color: white;
+        transform: translateY(-2px);
+    }
+    
+    .btn-add-invoice {
+        height: 25px;
+        width: 25px;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 0.5rem;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .btn-add-invoice:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        color: white;
+    }
+    
+    .invoices-table-wrapper {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        overflow-x: auto;
+    }
+    
+    .invoices-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .invoices-table thead {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+    
+    .invoices-table thead th {
+        padding: 0.5rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        border: none;
+        line-height: 1.2;
+    }
+    
+    .invoices-table thead th:first-child {
+        border-top-left-radius: 10px;
+    }
+    
+    .invoices-table thead th:last-child {
+        border-top-right-radius: 10px;
+    }
+    
+    .invoices-table tbody tr {
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .invoices-table tbody tr::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #28a745;
+        z-index: 1;
+    }
+    
+    .invoices-table tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.01);
+    }
+    
+    .invoices-table tbody td {
+        padding: 0.4rem 1rem;
+        vertical-align: middle;
+        line-height: 1.3;
+        border: none !important;
+        font-size: 0.9rem;
+    }
+    
+    .invoice-number {
+        font-weight: 700;
+        color: #28a745;
+        font-size: 0.9rem;
+    }
+    
+    .invoice-date {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .invoice-client {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.9rem;
+    }
+    
+    .invoice-amount {
+        font-weight: 700;
+        color: #28a745;
+        font-size: 0.9rem;
+    }
+    
+    .highlight {
+        background-color: #ffeb3b;
+        padding: 2px 0;
+        font-weight: 600;
+    }
+    
+    .search-loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    
+    .product-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .btn-action {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+    }
+    
+    .btn-action i {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+    }
+    
+    .btn-action-view {
+        border-color: #17a2b8;
+        color: #17a2b8;
+        background: rgba(23, 162, 184, 0.1);
+    }
+    
+    .btn-action-view:hover {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .empty-table-row {
+        text-align: center;
+        padding: 3rem !important;
+    }
+    
+    .empty-table-row td {
+        color: #6c757d;
+        font-size: 1.1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .invoices-table-wrapper {
+            padding: 1rem;
+        }
+        
+        .invoices-table thead th,
+        .invoices-table tbody td {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .invoices-header h1 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4" style="padding-top: 1rem; padding-bottom: 1rem;">
+    <!-- Header -->
+    <div class="invoices-header">
+        <h1>
+            <i class="fas fa-receipt"></i>
+            {{ title }}
+        </h1>
+    </div>
+    
+    <!-- Search Section -->
+    <div class="search-card">
+        <form action="{{ url_for('invoices.list_invoices') }}" method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="search" class="form-label">Buscar (Número, Cliente, Documento)</label>
+                <input type="text" class="form-control" id="search" placeholder="Ej: 0001, Juan Pérez, 123456789" autocomplete="off">
+            </div>
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">Fecha Inicio</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date if start_date else '' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">Fecha Fin</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date if end_date else '' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="status" class="form-label">Estado</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <select class="form-select" id="status" name="status" style="flex: 1;">
+                        <option value="all" {% if status == 'all' or status == None %}selected{% endif %}>Todos</option>
+                        <option value="pagada" {% if status == 'pagada' %}selected{% endif %}>Pagada</option>
+                        <option value="vencida" {% if status == 'vencida' %}selected{% endif %}>Vencida</option>
+                        <option value="anulada" {% if status == 'anulada' %}selected{% endif %}>Anulada</option>
+                        <option value="no_pagada" {% if status == 'no_pagada' %}selected{% endif %}>No Pagada</option>
+                        <option value="parcial" {% if status == 'parcial' %}selected{% endif %}>Parcial</option>
+                    </select>
+                    <div style="display: flex; gap: 0.25rem; align-items: center;">
+                        <button class="btn btn-search-invoices" type="submit" title="Buscar" data-bs-toggle="tooltip" data-bs-placement="top">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-clear-invoices" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
+                            <i class="fas fa-times"></i>
+                        </a>
+                        <a href="{{ url_for('invoices.add_invoice') }}" class="btn btn-add-invoice" title="Añadir Factura" data-bs-toggle="tooltip" data-bs-placement="top">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Invoices Table -->
+    <div class="invoices-table-wrapper">
+        <table class="invoices-table">
+            <thead>
+                <tr>
+                    <th>Número de Factura</th>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Documento Cliente</th>
+                    <th>Estado</th>
+                    <th>Monto Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if invoices %}
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td>
+                            <span class="invoice-number">{{ invoice.invoice_number }}</span>
+                        </td>
+                        <td>
+                            <span class="invoice-date">{{ invoice.date.strftime('%Y-%m-%d') }}</span>
+                        </td>
+                        <td>
+                            <span class="invoice-client">{{ invoice.client.name }}</span>
+                        </td>
+                        <td>{{ invoice.client.document_number }}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <div>
+                                    {% if invoice.status == 'pagada' %}
+                                        <span class="badge bg-success">Pagada</span>
+                                    {% elif invoice.status == 'vencida' %}
+                                        <span class="badge bg-danger">Vencida</span>
+                                    {% elif invoice.status == 'anulada' %}
+                                        <span class="badge bg-secondary">Anulada</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">No Pagada</span>
+                                    {% endif %}
+                                </div>
+                                <div class="product-actions" style="display: flex; gap: 0.25rem;">
+                                    <a href="{{ url_for('invoices.view_invoice', id=invoice.id, token=(invoice.id|view_token('invoice'))) }}" 
+                                       class="btn-action btn-action-view" 
+                                       title="Ver factura"
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="invoice-amount">{{ invoice.total_amount|currency_format }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr class="empty-table-row">
+                        <td colspan="6">
+                            <i class="fas fa-receipt" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem; display: block;"></i>
+                            <div>No hay facturas registradas</div>
+                            <a href="{{ url_for('invoices.add_invoice') }}" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus me-2"></i>Añadir Primera Factura
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// Almacenar el estado original de la tabla
+let originalTableHTML = null;
+let searchTimeout = null;
+let tooltipInstances = [];
+
+// Función para escapar HTML y prevenir XSS
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Función para resaltar texto coincidente
+function highlightText(text, query) {
+    if (!query || !text) return escapeHtml(String(text));
+    
+    const escapedText = escapeHtml(String(text));
+    const escapedQuery = escapeHtml(String(query));
+    const regex = new RegExp(`(${escapedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    
+    return escapedText.replace(regex, '<span class="highlight">$1</span>');
+}
+
+// Función para formatear moneda
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(amount).replace('COP', '$');
+}
+
+// Función para obtener el badge HTML según el estado
+function getStatusBadge(status) {
+    const badges = {
+        'pagada': '<span class="badge bg-success">Pagada</span>',
+        'vencida': '<span class="badge bg-danger">Vencida</span>',
+        'anulada': '<span class="badge bg-secondary">Anulada</span>',
+        'parcial': '<span class="badge bg-info">Parcial</span>',
+        'no_pagada': '<span class="badge bg-warning text-dark">No Pagada</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+}
+
+// Función para actualizar la tabla con los resultados
+function updateTable(invoices, query) {
+    const tbody = document.querySelector('.invoices-table tbody');
+    
+    if (!tbody) return;
+    
+    // Guardar HTML original si no está guardado
+    if (originalTableHTML === null) {
+        originalTableHTML = tbody.innerHTML;
+    }
+    
+    // Limpiar tooltips existentes
+    tooltipInstances.forEach(tooltip => {
+        if (tooltip && typeof tooltip.dispose === 'function') {
+            tooltip.dispose();
+        }
+    });
+    tooltipInstances = [];
+    
+    if (!invoices || invoices.length === 0) {
+        tbody.innerHTML = `
+            <tr class="empty-table-row">
+                <td colspan="7">
+                    <i class="fas fa-receipt" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem; display: block;"></i>
+                    <div>No se encontraron facturas</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Generar filas HTML
+    let rowsHTML = '';
+    invoices.forEach(invoice => {
+        rowsHTML += `
+            <tr>
+                <td>
+                    <span class="invoice-number">${highlightText(invoice.invoice_number, query)}</span>
+                </td>
+                <td>
+                    <span class="invoice-date">${invoice.date}</span>
+                </td>
+                <td>
+                    <span class="invoice-client">${highlightText(invoice.client_name, query)}</span>
+                </td>
+                <td>${highlightText(invoice.client_document_number, query)}</td>
+                <td>
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                        <div>
+                            ${getStatusBadge(invoice.status)}
+                        </div>
+                        <div class="product-actions" style="display: flex; gap: 0.25rem;">
+                            <a href="/invoices/${invoice.id}/${invoice.token}" 
+                               class="btn-action btn-action-view" 
+                               title="Ver factura"
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="invoice-amount">${formatCurrency(invoice.total_amount)}</span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = rowsHTML;
+    
+    // Re-inicializar tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipInstances = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
+// Función para realizar búsqueda en tiempo real
+function performLiveSearch() {
+    const searchInput = document.getElementById('search');
+    const query = searchInput ? searchInput.value.trim() : '';
+    const tableWrapper = document.querySelector('.invoices-table-wrapper');
+    
+    // Si el campo está vacío, restaurar tabla original
+    if (!query) {
+        const tbody = document.querySelector('.invoices-table tbody');
+        if (tbody && originalTableHTML !== null) {
+            tbody.innerHTML = originalTableHTML;
+            // Re-inicializar tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipInstances = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+        return;
+    }
+    
+    // Mostrar indicador de carga
+    if (tableWrapper) {
+        tableWrapper.classList.add('search-loading');
+    }
+    
+    // Realizar petición AJAX
+    fetch(`/invoices/search?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            updateTable(data.invoices || [], query);
+        })
+        .catch(error => {
+            console.error('Error en búsqueda:', error);
+            // En caso de error, mantener la tabla actual
+        })
+        .finally(() => {
+            // Remover indicador de carga
+            if (tableWrapper) {
+                tableWrapper.classList.remove('search-loading');
+            }
+        });
+}
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function () {
+    // Inicializar tooltips de Bootstrap
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipInstances = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Agregar event listener al campo de búsqueda con debounce reducido
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+        // Cargar valor inicial si existe en la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialSearch = urlParams.get('search');
+        if (initialSearch) {
+            searchInput.value = initialSearch;
+            performLiveSearch();
+        }
+        
+        searchInput.addEventListener('input', function() {
+            // Limpiar timeout anterior
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Búsqueda inmediata para primera letra, luego debounce de 200ms
+            const query = this.value.trim();
+            if (query.length === 1) {
+                performLiveSearch();
+            } else {
+                // Establecer nuevo timeout (debounce de 200ms para mejor respuesta)
+                searchTimeout = setTimeout(function() {
+                    performLiveSearch();
+                }, 200);
+            }
+        });
+        
+        // Prevenir que Enter en el campo de búsqueda envíe el formulario
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performLiveSearch();
+            }
+        });
+    }
+    
+    // Prevenir que el formulario se envíe automáticamente
+    const searchForm = document.querySelector('.search-card form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            // Si hay texto en el campo de búsqueda, prevenir submit y hacer búsqueda en tiempo real
+            const searchInput = document.getElementById('search');
+            if (searchInput && searchInput.value.trim()) {
+                e.preventDefault();
+                performLiveSearch();
+            }
+            // Si no hay texto en búsqueda, permitir submit normal para aplicar filtros de fecha/estado
+        });
+    }
+});
+</script>
+{% endblock %}

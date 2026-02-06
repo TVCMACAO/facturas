@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .clients-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+    
+    .clients-header h1 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .search-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+    }
+    
+    .search-input-wrapper {
+        position: relative;
+    }
+    
+    .search-input-wrapper .fa-search {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 10;
+    }
+    
+    .search-input-wrapper .btn-clear-search {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 5px;
+        z-index: 10;
+        display: none;
+        transition: color 0.3s ease;
+    }
+    
+    .search-input-wrapper .btn-clear-search:hover {
+        color: #dc3545;
+    }
+    
+    .search-input-wrapper .btn-clear-search.show {
+        display: block;
+    }
+    
+    .search-input-wrapper input {
+        padding-left: 45px;
+        padding-right: 45px;
+        height: 50px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input-wrapper input:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.15);
+        outline: none;
+    }
+    
+    .btn-add-client {
+        height: 50px;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        padding: 0 2rem;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-add-client:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    }
+    
+    .clients-table-wrapper {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        overflow-x: auto;
+    }
+    
+    .clients-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .clients-table thead {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+    
+    .clients-table thead th {
+        padding: 0.5rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        border: none;
+        line-height: 1.2;
+    }
+    
+    .clients-table thead th:first-child {
+        border-top-left-radius: 10px;
+    }
+    
+    .clients-table thead th:last-child {
+        border-top-right-radius: 10px;
+    }
+    
+    .clients-table tbody tr {
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .clients-table tbody tr::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #28a745;
+        z-index: 1;
+    }
+    
+    .clients-table tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.01);
+    }
+    
+    .clients-table tbody td {
+        padding: 0.4rem 1rem;
+        vertical-align: middle;
+        color: #2c3e50;
+        line-height: 1.3;
+        border: none !important;
+        font-size: 0.9rem;
+    }
+    
+    .client-name {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.9rem;
+    }
+    
+    .client-document {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .client-contact {
+        color: #2c3e50;
+        font-size: 0.9rem;
+    }
+    
+    .client-email {
+        color: #007bff;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+    
+    .client-email:hover {
+        text-decoration: underline;
+    }
+    
+    .client-phone {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .client-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .btn-action {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+    }
+    
+    .btn-action i {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-action-payments {
+        border-color: #17a2b8;
+        color: #17a2b8;
+        background: rgba(23, 162, 184, 0.1);
+    }
+    
+    .btn-action-payments:hover {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .btn-action-edit {
+        border-color: #007bff;
+        color: #007bff;
+        background: rgba(0, 123, 255, 0.1);
+    }
+    
+    .btn-action-edit:hover {
+        background: #007bff;
+        color: white;
+    }
+    
+    .btn-action-delete {
+        border-color: #dc3545;
+        color: #dc3545;
+        background: rgba(220, 53, 69, 0.1);
+    }
+    
+    .btn-action-delete:hover {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #6c757d;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state h3 {
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-state p {
+        color: #6c757d;
+    }
+    
+    .empty-table-row {
+        text-align: center;
+        padding: 3rem !important;
+    }
+    
+    .empty-table-row td {
+        color: #6c757d;
+        font-size: 1.1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .clients-table-wrapper {
+            padding: 1rem;
+        }
+        
+        .clients-table thead th,
+        .clients-table tbody td {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .client-actions {
+            flex-direction: row;
+        }
+        
+        .clients-header h1 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4" style="padding-top: 1rem; padding-bottom: 1rem;">
+    <!-- Header -->
+    <div class="clients-header">
+        <h1>
+            <i class="fas fa-users"></i>
+            {{ title }}
+        </h1>
+    </div>
+    
+    <!-- Search and Add Section -->
+    <div class="search-card">
+        <form action="{{ url_for('clients.list_clients') }}" method="get" class="d-flex gap-2 align-items-center" id="searchForm">
+            <div class="search-input-wrapper flex-grow-1">
+                <i class="fas fa-search"></i>
+                <input type="search" 
+                       class="form-control" 
+                       id="searchInput"
+                       placeholder="Buscar por nombre o email" 
+                       name="q" 
+                       value="{{ q if q else '' }}">
+                {% if q %}
+                <button type="button" class="btn-clear-search show" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
+                    <i class="fas fa-times-circle"></i>
+                </button>
+                {% else %}
+                <button type="button" class="btn-clear-search" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
+                    <i class="fas fa-times-circle"></i>
+                </button>
+                {% endif %}
+            </div>
+            <button class="btn btn-success" type="submit" style="height: 50px; width: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Buscar" data-bs-toggle="tooltip" data-bs-placement="top">
+                <i class="fas fa-search"></i>
+            </button>
+            <a href="{{ url_for('clients.add_client') }}" class="btn btn-add-client text-white" style="height: 50px; width: 50px; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0;" title="Añadir Cliente" data-bs-toggle="tooltip" data-bs-placement="top">
+                <i class="fas fa-plus"></i>
+            </a>
+        </form>
+    </div>
+    
+    <!-- Clients Table -->
+    <div class="clients-table-wrapper">
+        <table class="clients-table">
+            <thead>
+                <tr>
+                    <th>Nombre / Razón Social</th>
+                    <th>Documento</th>
+                    <th>Persona de Contacto</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if clients %}
+                    {% for client in clients %}
+                    <tr>
+                        <td>
+                            <span class="client-name">{{ client.name }}</span>
+                        </td>
+                        <td>
+                            <span class="client-document">{{ client.document_number or 'N/A' }}</span>
+                        </td>
+                        <td>
+                            <span class="client-contact">{{ client.contact_person or 'N/A' }}</span>
+                        </td>
+                        <td>
+                            <a href="mailto:{{ client.email }}" class="client-email">
+                                <i class="fas fa-envelope me-1"></i>{{ client.email }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="client-phone">
+                                <i class="fas fa-phone me-1"></i>{{ client.phone or 'N/A' }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="client-actions">
+                                <a href="{{ url_for('clients.view_client_payments', id=client.id) }}" 
+                                   class="btn-action btn-action-payments" 
+                                   title="Ver pagos"
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </a>
+                                <a href="{{ url_for('clients.edit_client', id=client.id) }}" 
+                                   class="btn-action btn-action-edit" 
+                                   title="Editar cliente"
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('clients.delete_client', id=client.id) }}" method="post" style="display:inline;">
+                                    <button type="submit" 
+                                            class="btn-action btn-action-delete" 
+                                            title="Eliminar cliente"
+                                            data-bs-toggle="tooltip" 
+                                            data-bs-placement="top"
+                                            onclick="return confirm('¿Estás seguro de que quieres eliminar este cliente?');"
+                                            style="border: 2px solid #dc3545; background: rgba(220, 53, 69, 0.1); color: #dc3545; cursor: pointer;">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr class="empty-table-row">
+                        <td colspan="6">
+                            <i class="fas fa-users-slash" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem; display: block;"></i>
+                            <div>No hay clientes registrados</div>
+                            <a href="{{ url_for('clients.add_client') }}" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus me-2"></i>Añadir Primer Cliente
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.querySelector('.btn-clear-search');
+    if (searchInput) {
+        searchInput.value = '';
+        clearBtn.classList.remove('show');
+        // Redirigir a la lista sin parámetros de búsqueda
+        window.location.href = "{{ url_for('clients.list_clients') }}";
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Inicializar tooltips de Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Mostrar/ocultar botón de limpiar según el contenido del input
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.querySelector('.btn-clear-search');
+    
+    if (searchInput && clearBtn) {
+        searchInput.addEventListener('input', function() {
+            if (this.value.length > 0) {
+                clearBtn.classList.add('show');
+            } else {
+                clearBtn.classList.remove('show');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

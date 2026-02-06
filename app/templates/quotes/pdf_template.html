@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cotización {{ quote.quote_number }}</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 0.5in;
+        }
+        body {
+            font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+            font-size: 10px;
+            color: #333;
+        }
+        .header-table, .main-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .header-table td {
+            vertical-align: top;
+        }
+        .logo {
+            width: 254px;
+            height: auto;
+        }
+        .company-details {
+            text-align: right;
+        }
+        .company-details h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #2c6e49; /* Un verde corporativo */
+        }
+        .quote-details {
+            text-align: right;
+        }
+        .quote-details p {
+            margin: 2px 0;
+        }
+        .section-title {
+            background-color: #e8f5e9; /* Light Green */
+            color: #1b5e20; /* Dark Green Text */
+            padding: 5px;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #2c6e49;
+        }
+        .client-info {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+        }
+        .main-table th, .main-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 12px; /* Increased font size by 2 points */
+        }
+        .main-table thead {
+            background-color: #2c6e49;
+            color: white;
+        }
+        .main-table th {
+            font-weight: bold;
+        }
+        .main-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .totals {
+            width: 40%;
+            float: right;
+            margin-top: 20px;
+        }
+        .totals table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals td {
+            padding: 5px;
+        }
+        .totals .label {
+            font-weight: bold;
+            text-align: right;
+        }
+        .totals .amount {
+            text-align: right;
+            width: 50%;
+        }
+        .grand-total {
+            font-size: 14px;
+            font-weight: bold;
+            background-color: #2c6e49;
+            color: white;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0.2in;
+            left: 0;
+            right: 0;
+            height: auto; /* Allow content to expand */
+            text-align: center;
+            font-size: 12px; /* Increased font size to 12px */
+            border-top: 1px solid #ddd;
+            padding-top: 5px;
+            border: 1px solid red; /* Temporary border for debugging */
+        }
+    </style>
+</head>
+<body>
+    <table class="header-table">
+        <tr>
+            <td>
+                {% if logo_path and '1.png' in logo_path %}
+                <img src="{{ logo_path }}" alt="Logo" class="logo">
+                {% endif %}
+            </td>
+            <td class="company-details">
+                <h1>Hemmis laverde</h1>
+                <p>NIT: 1.067.896.086</p>
+                <p>Tienda Virtual</p>
+                <p>+57 3017914668 | ing.hclz@gmail.com</p>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-title">COTIZACIÓN</div>
+
+    <table class="header-table">
+        <tr>
+            <td style="width: 60%;">
+                <div class="client-info">
+                    <strong>CLIENTE:</strong><br>
+                    {{ quote.client.name }}<br>
+                    {% if quote.client.document_number %}C.C./NIT: {{ quote.client.document_number }}<br>{% endif %}
+                    {% if quote.client.contact_person %}Contacto: {{ quote.client.contact_person }}<br>{% endif %}
+                    {{ quote.client.address }}<br>
+                    {{ quote.client.email }} | {{ quote.client.phone }}
+                </div>
+            </td>
+            <td style="width: 40%;">
+                <div class="quote-details">
+                    <p><strong>NÚMERO DE COTIZACIÓN:</strong></p>
+                    <p style="font-size: 16px; color: #d9534f;">{{ quote.quote_number }}</p>
+                    <p><strong>FECHA:</strong></p>
+                    <p>{{ quote.date.strftime('%d/%m/%Y') }}</p>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="main-table">
+        <thead>
+            <tr>
+                <th style="width: 55%;">ÍTEM</th>
+                <th style="width: 15%; text-align: right;">PRECIO</th>
+                <th style="width: 10%; text-align: center;">CANTIDAD</th>
+                <th style="width: 20%; text-align: right;">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in quote.items %}
+            <tr>
+                <td><strong>{{ item.product.code }}</strong> - {{ item.product.name }}</td>
+                <td style="text-align: right;">{{ item.unit_price|currency_format }}</td>
+                <td style="text-align: center;">{{ item.quantity }}</td>
+                <td style="text-align: right;">{{ item.total_price|currency_format }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <table>
+            <tr>
+                <td class="label">SUBTOTAL:</td>
+                <td class="amount">{{ quote.total_amount|currency_format }}</td>
+            </tr>
+            <tr>
+                <td class="label">Descuento:</td>
+                <td class="amount">{{ 0|currency_format }}</td>
+            </tr>
+            <tr>
+                <td class="label">SUBTOTAL (Neto):</td>
+                <td class="amount">{{ quote.total_amount|currency_format }}</td>
+            </tr>
+            <tr>
+                <td class="label">IVA (0%):</td>
+                <td class="amount">{{ 0|currency_format }}</td>
+            </tr>
+            <tr class="grand-total">
+                <td class="label">TOTAL:</td>
+                <td class="amount">{{ quote.total_amount|currency_format }}</td>
+            </tr>
+        </table>
+        <p style="font-weight: bold; margin-top: 10px;">SON: {{ amount_in_words }}</p>
+    </div>
+
+    <div class="footer">
+        <p><strong>Datos Bancarios:</strong> Número de cuenta ahorros N° 466278595 de BBVA | Nequi: 3017914668</p>
+        <p>Si tienes alguna pregunta, contáctanos. ¡Gracias por tu preferencia!</p>
+    </div>
+
+</body>
+</html>

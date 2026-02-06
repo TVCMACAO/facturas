@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Factura {{ invoice.invoice_number }}</title>
+</head>
+<body>
+    <p>Estimado/a {{ invoice.client.name }},</p>
+    <p>Adjunto encontrará la Factura #{{ invoice.invoice_number }} con fecha {{ invoice.date.strftime('%d/%m/%Y') }}.</p>
+    <p>El monto total de la factura es de {{ "%.2f"|format(invoice.total_amount) }}.</p>
+    <p>Si tiene alguna pregunta, no dude en contactarnos.</p>
+    <p>Saludos cordiales,</p>
+    <p>Su Empresa</p>
+</body>
+</html>
