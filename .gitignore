@@ -90,6 +90,7 @@ logs/
 # Node modules (si hay)
 node_modules/
 package-lock.json
+package.json
 
 # Build files
 build/
@@ -108,6 +109,10 @@ documentacion.html
 *.temp
 *.bak
 *.swp
+
+# Archivos de setup y comandos temporales
+COMANDOS_GITHUB.txt
+setup_github.bat
 
 # Sistema operativo
 Thumbs.db
