@@ -28,9 +28,18 @@ def resolve_entity_company_id(entity):
         return None
     if getattr(entity, 'company_id', None):
         return entity.company_id
+
+    client_id = getattr(entity, 'client_id', None)
+    if client_id:
+        from app.models import Client
+        client = db.session.get(Client, client_id)
+        if client and client.company_id:
+            return client.company_id
+
     client = getattr(entity, 'client', None)
     if client and getattr(client, 'company_id', None):
         return client.company_id
+
     return get_current_company_id()
 
 def is_super_admin():

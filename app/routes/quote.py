@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from app import db, mail # Import mail
 from app.models import Quote, Client, Product, QuoteItem, Invoice, InvoiceItem, InventoryMovement # Import Invoice and InvoiceItem
 from app.forms import QuoteForm, QuoteItemForm, UpdateQuoteStatusForm, QuoteItemEditForm # Import QuoteItemEditForm
-from app.tenant import filter_by_company, ensure_company_id, get_company_default_tax_rate, resolve_entity_company_id
+from app.tenant import filter_by_company, ensure_company_id, get_company_default_tax_rate, resolve_entity_company_id, get_current_company_id
 from app.decorators import role_required, log_audit
 from app.numbering import next_invoice_number
 from sqlalchemy.exc import IntegrityError
@@ -536,14 +536,18 @@ def _perform_quote_to_invoice_conversion(quote, quote_id):
         flash('La cotización no tiene ítems. Agregue productos antes de convertir a factura.', 'warning')
         return redirect_to_view_quote(quote_id)
 
-    company_id = resolve_entity_company_id(quote)
+    company_id = quote.company_id or get_current_company_id() or resolve_entity_company_id(quote)
     if not company_id:
         flash('No se pudo determinar la empresa de la cotización. Contacte al administrador.', 'danger')
         return redirect_to_view_quote(quote_id)
 
     if not quote.company_id:
         quote.company_id = company_id
-        db.session.flush()
+    if quote.client_id:
+        client = db.session.get(Client, quote.client_id)
+        if client and not client.company_id:
+            client.company_id = company_id
+    db.session.flush()
 
     today = datetime.date.today()
     today_dt = datetime.datetime.combine(today, datetime.time.min)

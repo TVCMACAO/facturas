@@ -7,7 +7,9 @@ from importlib import reload
 def test_health_endpoint(client):
     response = client.get('/health')
     assert response.status_code == 200
-    assert response.get_json()['status'] == 'ok'
+    data = response.get_json()
+    assert data['status'] == 'ok'
+    assert 'build' in data
 
 
 def test_production_config_requires_secret_key(monkeypatch):

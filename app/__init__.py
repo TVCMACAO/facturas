@@ -77,7 +77,8 @@ def create_app(config_class=None):
 
     @app.route('/health')
     def health():
-        return {'status': 'ok'}, 200
+        from app.version import APP_BUILD_ID
+        return {'status': 'ok', 'build': APP_BUILD_ID}, 200
 
     from app.routes.main import main as main_blueprint
     app.register_blueprint(main_blueprint)

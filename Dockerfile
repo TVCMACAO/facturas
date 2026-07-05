@@ -21,9 +21,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+ARG APP_BUILD_ID=unknown
+ENV APP_BUILD_ID=${APP_BUILD_ID}
+
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${PORT:-5000}/health')" || exit 1
+    CMD python -c "import urllib.request, json; r=urllib.request.urlopen('http://127.0.0.1:${PORT:-5000}/health'); d=json.load(r); assert d.get('build'), 'missing build'" || exit 1
 
-CMD ["sh", "-c", "exec waitress-serve --host=0.0.0.0 --port=${PORT:-5000} run:app"]
+CMD ["sh", "-c", "echo \"Starting build=${APP_BUILD_ID}\" && exec waitress-serve --host=0.0.0.0 --port=${PORT:-5000} run:app"]
