@@ -558,52 +558,60 @@ def convert_to_invoice(id, token=None):
         flash('La cotización no tiene ítems. Agregue productos antes de convertir a factura.', 'warning')
         return redirect_to_view_quote(id)
 
-    generated_invoice_number = next_invoice_number(quote.company_id)
+    today = datetime.date.today()
+    today_dt = datetime.datetime.combine(today, datetime.time.min)
+    due_date = today + datetime.timedelta(days=30)
 
-    try:
-        new_invoice = Invoice(
-            company_id=quote.company_id,
-            client_id=quote.client_id,
-            invoice_number=generated_invoice_number,
-            date=datetime.date.today(),
-            due_date=datetime.date.today() + datetime.timedelta(days=30),
-            subtotal=quote.subtotal,
-            discount_type=quote.discount_type,
-            discount_value=quote.discount_value,
-            discount_amount=quote.discount_amount,
-            tax_rate=quote.tax_rate,
-            tax_amount=quote.tax_amount,
-            total_amount=quote.total_amount,
-            quote_id=quote.id,
-        )
-        db.session.add(new_invoice)
-        db.session.flush()
+    for attempt in range(3):
+        generated_invoice_number = next_invoice_number(quote.company_id)
+        try:
+            new_invoice = Invoice(
+                company_id=quote.company_id,
+                client_id=quote.client_id,
+                invoice_number=generated_invoice_number,
+                date=today_dt,
+                due_date=due_date,
+                subtotal=quote.subtotal or 0.0,
+                discount_type=quote.discount_type or 'none',
+                discount_value=quote.discount_value or 0.0,
+                discount_amount=quote.discount_amount or 0.0,
+                tax_rate=quote.tax_rate or 0.0,
+                tax_amount=quote.tax_amount or 0.0,
+                total_amount=quote.total_amount or 0.0,
+                quote_id=quote.id,
+            )
+            db.session.add(new_invoice)
+            db.session.flush()
 
-        for quote_item in quote.items:
-            db.session.add(InvoiceItem(
-                invoice_id=new_invoice.id,
-                product_id=quote_item.product_id,
-                quantity=quote_item.quantity,
-                unit_price=quote_item.unit_price,
-                total_price=quote_item.total_price,
-            ))
+            for quote_item in quote.items:
+                db.session.add(InvoiceItem(
+                    invoice_id=new_invoice.id,
+                    product_id=quote_item.product_id,
+                    quantity=quote_item.quantity,
+                    unit_price=quote_item.unit_price,
+                    total_price=quote_item.total_price,
+                ))
 
-        quote.status = 'facturada'
-        db.session.commit()
+            quote.status = 'facturada'
+            db.session.commit()
 
-        log_audit('create', 'invoice', new_invoice.id, {'from_quote_id': quote.id, 'invoice_number': new_invoice.invoice_number})
+            log_audit('create', 'invoice', new_invoice.id, {'from_quote_id': quote.id, 'invoice_number': new_invoice.invoice_number})
 
-        flash(f'Cotización {quote.quote_number} convertida a Factura {new_invoice.invoice_number} con éxito.', 'success')
-        from app.routes.invoice import generate_view_token as gen_inv_token
-        inv_token = gen_inv_token(new_invoice.id, 'invoice')
-        return redirect(url_for('invoices.view_invoice', id=new_invoice.id, token=inv_token))
-    except IntegrityError:
-        db.session.rollback()
-        flash('No se pudo crear la factura: el número de factura ya existe. Intente de nuevo.', 'danger')
-        return redirect_to_view_quote(id)
-    except Exception:
-        db.session.rollback()
-        raise
+            flash(f'Cotización {quote.quote_number} convertida a Factura {new_invoice.invoice_number} con éxito.', 'success')
+            from app.routes.invoice import generate_view_token as gen_inv_token
+            inv_token = gen_inv_token(new_invoice.id, 'invoice')
+            return redirect(url_for('invoices.view_invoice', id=new_invoice.id, token=inv_token))
+        except IntegrityError:
+            db.session.rollback()
+            if attempt < 2:
+                continue
+            flash('No se pudo crear la factura: el número de factura ya existe. Intente de nuevo.', 'danger')
+            return redirect_to_view_quote(id)
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.exception('Error al convertir cotización %s a factura: %s', quote.id, exc)
+            flash('No se pudo crear la factura. Verifique los datos e intente de nuevo.', 'danger')
+            return redirect_to_view_quote(id)
 
 @quotes_bp.route('/<int:id>/send_email', methods=['GET', 'POST'])
 @quotes_bp.route('/<int:id>/<token>/send_email', methods=['GET', 'POST'])
