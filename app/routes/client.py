@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app import db
 from app.models import Client, Invoice, Payment
 from app.forms import ClientForm
+from app.tenant import filter_by_company, ensure_company_id
+from app.decorators import role_required, log_audit
 from sqlalchemy import or_
 
 clients_bp = Blueprint('clients', __name__, url_prefix='/clients')
@@ -11,8 +13,9 @@ clients_bp = Blueprint('clients', __name__, url_prefix='/clients')
 @login_required
 def list_clients():
     q = request.args.get('q')
+    base_query = filter_by_company(Client.query, Client)
     if q:
-        clients = Client.query.filter(
+        clients = base_query.filter(
             or_(
                 Client.name.ilike(f'%{q}%'),
                 Client.email.ilike(f'%{q}%'),
@@ -20,11 +23,21 @@ def list_clients():
             )
         ).all()
     else:
-        clients = Client.query.all()
-    return render_template('clients/list.html', clients=clients, title='Clientes', q=q)
+        clients = base_query.all()
+    q = (q or '').strip()
+    return render_template(
+        'clients/list.html',
+        clients=clients,
+        title='Clientes',
+        q=q,
+        filter_q=q,
+        filter_show_dates=False,
+        filter_show_status=False,
+    )
 
 @clients_bp.route('/new', methods=['GET', 'POST'])
 @login_required
+@role_required(['user', 'admin', 'super_admin'])
 def add_client():
     form = ClientForm()
     if form.validate_on_submit():
@@ -35,7 +48,8 @@ def add_client():
             email=form.email.data,
             phone=form.phone.data,
             whatsapp_number=form.whatsapp_number.data,
-            address=form.address.data
+            address=form.address.data,
+            company_id=current_user.company_id
         )
         db.session.add(client)
         db.session.commit()
@@ -52,8 +66,9 @@ def invalid_client_id(invalid_id):
 
 @clients_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
+@role_required(['user', 'admin', 'super_admin'])
 def edit_client(id):
-    client = Client.query.get_or_404(id)
+    client = ensure_company_id(id, Client)
     form = ClientForm(obj=client)
     form.instance = client # Pass instance to form for validation
     if form.validate_on_submit():
@@ -71,18 +86,21 @@ def edit_client(id):
 
 @clients_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
+@role_required(['user', 'admin', 'super_admin'])
 def delete_client(id):
-    client = Client.query.get_or_404(id)
+    client = ensure_company_id(id, Client)
+    client_id = client.id
     db.session.delete(client)
     db.session.commit()
+    log_audit('delete', 'client', client_id)
     flash('Cliente eliminado con éxito.', 'success')
     return redirect(url_for('clients.list_clients'))
 
 @clients_bp.route('/<int:id>/payments')
 @login_required
 def view_client_payments(id):
-    client = Client.query.get_or_404(id)
-    # Fetch all invoices for this client
+    client = ensure_company_id(id, Client)
+    # Fetch all invoices for this client (ya filtradas por company_id a través de la relación)
     invoices = client.invoices.all()
     
     # Collect all payments from these invoices

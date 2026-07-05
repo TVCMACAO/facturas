@@ -3,8 +3,9 @@ import os
 from flask_login import login_required, current_user
 from app import db, mail
 from flask_mail import Message
-from app.models import CreditNote, CreditNoteItem, Invoice, InvoiceItem, Product, InventoryMovement
+from app.models import CreditNote, CreditNoteItem, Invoice, InvoiceItem, Product, InventoryMovement, Client
 from app.forms import CreditNoteForm, CreditNoteItemForm
+from app.tenant import filter_by_company, ensure_company_id, get_company_default_tax_rate
 import datetime
 import weasyprint
 from pathlib import Path
@@ -59,12 +60,11 @@ def calculate_credit_note_totals(credit_note):
         discount_amount = min(credit_note.discount_value, subtotal)
     
     amount_after_discount = subtotal - discount_amount
-    
-    # Calcular impuestos
-    tax_rate = credit_note.tax_rate if credit_note.tax_rate is not None else Config.DEFAULT_TAX_RATE
-    tax_amount = amount_after_discount * (tax_rate / 100.0)
-    
-    total_amount = amount_after_discount + tax_amount
+
+    # Sin IVA: total = valor neto (subtotal - descuento)
+    tax_rate = 0.0
+    tax_amount = 0.0
+    total_amount = amount_after_discount
     
     credit_note.subtotal = subtotal
     credit_note.discount_amount = discount_amount
@@ -78,21 +78,63 @@ def calculate_credit_note_totals(credit_note):
 @login_required
 def list_credit_notes():
     """Lista todas las notas de crédito."""
-    credit_notes = CreditNote.query.order_by(CreditNote.date.desc()).all()
-    return render_template('credit_notes/list.html', credit_notes=credit_notes, title='Notas de Crédito')
+    from sqlalchemy import or_
+    base_query = filter_by_company(CreditNote.query, CreditNote)
+    q = request.args.get('q', '').strip()
+    if q:
+        base_query = base_query.join(Invoice, CreditNote.invoice_id == Invoice.id).join(Client, Invoice.client_id == Client.id).filter(
+            or_(
+                CreditNote.credit_note_number.ilike(f'%{q}%'),
+                Invoice.invoice_number.ilike(f'%{q}%'),
+                Client.name.ilike(f'%{q}%'),
+                Client.document_number.ilike(f'%{q}%')
+            )
+        )
+    date_from = request.args.get('date_from', '').strip()
+    if date_from:
+        try:
+            from datetime import datetime as dt
+            d = dt.strptime(date_from, '%Y-%m-%d').date()
+            base_query = base_query.filter(CreditNote.date >= dt.combine(d, dt.min.time()))
+        except ValueError:
+            pass
+    date_to = request.args.get('date_to', '').strip()
+    if date_to:
+        try:
+            from datetime import datetime as dt
+            d = dt.strptime(date_to, '%Y-%m-%d').date()
+            base_query = base_query.filter(CreditNote.date <= dt.combine(d, dt.max.time()))
+        except ValueError:
+            pass
+    status = request.args.get('status', '').strip()
+    if status:
+        base_query = base_query.filter(CreditNote.status == status)
+    credit_notes = base_query.order_by(CreditNote.date.desc()).all()
+    return render_template(
+        'credit_notes/list.html',
+        credit_notes=credit_notes,
+        title='Notas de Crédito',
+        filter_q=q,
+        filter_date_from=date_from,
+        filter_date_to=date_to,
+        filter_status=status,
+        filter_show_status=True,
+        filter_status_options=[('', 'Todos'), ('active', 'Activa')],
+    )
 
 @credit_notes_bp.route('/new/<int:invoice_id>', methods=['GET', 'POST'])
 @login_required
 def create_from_invoice(invoice_id):
     """Crea una nota de crédito desde una factura específica."""
-    invoice = Invoice.query.get_or_404(invoice_id)
+    invoice = ensure_company_id(invoice_id, Invoice)
     form = CreditNoteForm()
     
     # Pre-llenar datos de la factura
     form.invoice_id.choices = [(invoice.id, f"Factura #{invoice.invoice_number}")]
     
-    # Generar número de nota de crédito
-    last_credit_note = CreditNote.query.order_by(CreditNote.id.desc()).first()
+    # Generar número de nota de crédito (único por empresa)
+    base_credit_note_query = filter_by_company(CreditNote.query, CreditNote)
+    last_credit_note = base_credit_note_query.order_by(CreditNote.id.desc()).first()
     if last_credit_note and last_credit_note.credit_note_number.isdigit():
         next_number = int(last_credit_note.credit_note_number) + 1
     else:
@@ -101,13 +143,14 @@ def create_from_invoice(invoice_id):
     generated_number = str(next_number).zfill(4)
     
     if form.validate_on_submit():
-        tax_rate = form.tax_rate.data if form.tax_rate.data is not None else invoice.tax_rate or Config.DEFAULT_TAX_RATE
+        tax_rate = form.tax_rate.data if form.tax_rate.data is not None else get_company_default_tax_rate(invoice.company_id)
         
         new_credit_note = CreditNote(
             credit_note_number=generated_number,
             invoice_id=invoice.id,
             date=form.date.data,
             reason=form.reason.data,
+            company_id=current_user.company_id,
             subtotal=0.0,
             discount_type=form.discount_type.data or 'none',
             discount_value=form.discount_value.data or 0.0,
@@ -124,7 +167,7 @@ def create_from_invoice(invoice_id):
     
     if not form.is_submitted():
         form.date.data = datetime.date.today()
-        form.tax_rate.data = invoice.tax_rate or Config.DEFAULT_TAX_RATE
+        form.tax_rate.data = get_company_default_tax_rate(invoice.company_id)
         form.discount_type.data = invoice.discount_type or 'none'
         form.discount_value.data = invoice.discount_value or 0.0
     
@@ -143,7 +186,7 @@ def view_credit_note(id):
     """Vista detallada de una nota de crédito y permite añadir ítems."""
     # Validar formato del ID para prevenir acceso no autorizado
     validate_id_format(id, 'credit_notes')
-    credit_note = CreditNote.query.get_or_404(id)
+    credit_note = ensure_company_id(id, CreditNote)
     item_form = CreditNoteItemForm()
     
     # Obtener ítems de la factura original que aún no han sido devueltos completamente
@@ -163,7 +206,11 @@ def view_credit_note(id):
     item_form.invoice_item_id.choices = [(None, 'Seleccione un ítem')] + invoice_items
     
     if request.method == 'POST' and 'add_item' in request.form and item_form.validate():
+        # InvoiceItem no tiene company_id directamente, pero se valida a través de Invoice
         invoice_item = InvoiceItem.query.get(item_form.invoice_item_id.data)
+        if invoice_item and invoice_item.invoice.company_id != current_user.company_id:
+            from flask import abort
+            abort(403)
         if not invoice_item or invoice_item.invoice_id != invoice.id:
             flash('Ítem de factura no válido.', 'danger')
             return redirect(url_for('credit_notes.view_credit_note', id=id))
@@ -224,7 +271,7 @@ def view_credit_note(id):
 @login_required
 def generate_credit_note_pdf(id):
     """Genera PDF de la nota de crédito."""
-    credit_note = CreditNote.query.get_or_404(id)
+    credit_note = ensure_company_id(id, CreditNote)
     logo_disk_path = Path(os.path.join(current_app.root_path, 'img', '1.png'))
     logo_path = urllib.parse.urljoin('file:', urllib.request.pathname2url(str(logo_disk_path))) if logo_disk_path.exists() else None
     
@@ -244,11 +291,11 @@ def generate_credit_note_pdf(id):
 @login_required
 def delete_credit_note(id):
     """Elimina una nota de crédito (solo si no tiene ítems o está permitido)."""
-    credit_note = CreditNote.query.get_or_404(id)
+    credit_note = ensure_company_id(id, CreditNote)
     
     # Revertir movimientos de inventario
     for item in credit_note.items:
-        product = Product.query.get(item.product_id)
+        product = ensure_company_id(item.product_id, Product)
         if product:
             product.stock -= item.quantity  # Revertir la devolución
     

@@ -8,11 +8,14 @@ Uso:
     python start.py --production       # Modo producción
     python start.py --port 5000       # Especificar puerto
     python start.py --host 0.0.0.0    # Especificar host
+    python start.py --network          # Acceso desde la red local (equivalente a --host 0.0.0.0)
     python start.py --check            # Solo validar configuración sin iniciar
 """
 
+import json
 import os
 import sys
+import time
 import argparse
 from config import Config
 
@@ -95,14 +98,37 @@ def print_config_info():
     print("="*60 + "\n")
 
 
+def _local_ip():
+    """Obtiene una IP local (LAN) para mostrar en consola."""
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0)
+        s.connect(('10.255.255.255', 1))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return None
+
+
+def _print_network_url(port):
+    """Muestra la URL de acceso desde la red local."""
+    ip = _local_ip()
+    if ip:
+        print(f"[RED LOCAL] Desde otros equipos use: http://{ip}:{port}")
+
+
 def run_development_server(host='127.0.0.1', port=5000):
     """Inicia el servidor en modo desarrollo."""
     from app import create_app
-    
+
     app = create_app()
     
     print(f"\n[INICIANDO] Servidor en modo DESARROLLO")
     print(f"[URL] http://{host}:{port}")
+    if host == '0.0.0.0':
+        _print_network_url(port)
     print(f"[DEBUG] Debug mode: ON")
     print(f"[INFO] Presiona Ctrl+C para detener el servidor\n")
     
@@ -125,13 +151,13 @@ def run_production_server(host='0.0.0.0', port=8080):
         print("[ERROR] waitress no esta instalado.")
         print("   Instalalo con: pip install waitress")
         sys.exit(1)
-    
-    from app import create_app
-    
-    app = create_app()
-    
-    # Desactivar modo debug para producción
+
+    os.environ['FLASK_ENV'] = 'production'
     os.environ['FLASK_DEBUG'] = '0'
+
+    from app import create_app
+
+    app = create_app()
     app.config['DEBUG'] = False
     
     print(f"\n[INICIANDO] Servidor en modo PRODUCCION")
@@ -179,6 +205,12 @@ def main():
     )
     
     parser.add_argument(
+        '--network',
+        action='store_true',
+        help='Escuchar en 0.0.0.0 para permitir acceso desde otros equipos en la red local'
+    )
+    
+    parser.add_argument(
         '--check',
         action='store_true',
         help='Solo valida la configuración sin iniciar el servidor'
@@ -217,9 +249,10 @@ def main():
     if args.production:
         host = args.host or '0.0.0.0'
         port = args.port or 8080
+        os.environ['FLASK_ENV'] = 'production'
         run_production_server(host, port)
     else:
-        host = args.host or '127.0.0.1'
+        host = args.host or ('0.0.0.0' if args.network else '127.0.0.1')
         port = args.port or 5000
         run_development_server(host, port)
 

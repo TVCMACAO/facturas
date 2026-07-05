@@ -328,34 +328,10 @@
         </h1>
     </div>
     
-    <!-- Search and Add Section -->
-    <div class="search-card">
-        <form action="{{ url_for('clients.list_clients') }}" method="get" class="d-flex gap-2 align-items-center" id="searchForm">
-            <div class="search-input-wrapper flex-grow-1">
-                <i class="fas fa-search"></i>
-                <input type="search" 
-                       class="form-control" 
-                       id="searchInput"
-                       placeholder="Buscar por nombre o email" 
-                       name="q" 
-                       value="{{ q if q else '' }}">
-                {% if q %}
-                <button type="button" class="btn-clear-search show" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
-                    <i class="fas fa-times-circle"></i>
-                </button>
-                {% else %}
-                <button type="button" class="btn-clear-search" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
-                    <i class="fas fa-times-circle"></i>
-                </button>
-                {% endif %}
-            </div>
-            <button class="btn btn-success" type="submit" style="height: 50px; width: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Buscar" data-bs-toggle="tooltip" data-bs-placement="top">
-                <i class="fas fa-search"></i>
-            </button>
-            <a href="{{ url_for('clients.add_client') }}" class="btn btn-add-client text-white" style="height: 50px; width: 50px; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0;" title="Añadir Cliente" data-bs-toggle="tooltip" data-bs-placement="top">
-                <i class="fas fa-plus"></i>
-            </a>
-        </form>
+    {% set filter_action = url_with_token('clients.list_clients') %}
+    {% include '_list_filters.html' with context %}
+    <div class="d-flex justify-content-end mb-2">
+        <a href="{{ url_with_token('clients.add_client') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Añadir cliente</a>
     </div>
     
     <!-- Clients Table -->
@@ -396,21 +372,22 @@
                         </td>
                         <td>
                             <div class="client-actions">
-                                <a href="{{ url_for('clients.view_client_payments', id=client.id) }}" 
+                                <a href="{{ url_with_token('clients.view_client_payments', id=client.id) }}" 
                                    class="btn-action btn-action-payments" 
                                    title="Ver pagos"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top">
                                     <i class="fas fa-money-bill-wave"></i>
                                 </a>
-                                <a href="{{ url_for('clients.edit_client', id=client.id) }}" 
+                                <a href="{{ url_with_token('clients.edit_client', id=client.id) }}" 
                                    class="btn-action btn-action-edit" 
                                    title="Editar cliente"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <form action="{{ url_for('clients.delete_client', id=client.id) }}" method="post" style="display:inline;">
+                                <form action="{{ url_with_token('clients.delete_client', id=client.id) }}" method="post" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                     <button type="submit" 
                                             class="btn-action btn-action-delete" 
                                             title="Eliminar cliente"
@@ -430,7 +407,7 @@
                         <td colspan="6">
                             <i class="fas fa-users-slash" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem; display: block;"></i>
                             <div>No hay clientes registrados</div>
-                            <a href="{{ url_for('clients.add_client') }}" class="btn btn-primary mt-3">
+                            <a href="{{ url_with_token('clients.add_client') }}" class="btn btn-primary mt-3">
                                 <i class="fas fa-plus me-2"></i>Añadir Primer Cliente
                             </a>
                         </td>
@@ -445,37 +422,9 @@
 {% block scripts %}
 {{ super() }}
 <script>
-function clearSearch() {
-    const searchInput = document.getElementById('searchInput');
-    const clearBtn = document.querySelector('.btn-clear-search');
-    if (searchInput) {
-        searchInput.value = '';
-        clearBtn.classList.remove('show');
-        // Redirigir a la lista sin parámetros de búsqueda
-        window.location.href = "{{ url_for('clients.list_clients') }}";
-    }
-}
-
 document.addEventListener('DOMContentLoaded', function () {
-    // Inicializar tooltips de Bootstrap
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    // Mostrar/ocultar botón de limpiar según el contenido del input
-    const searchInput = document.getElementById('searchInput');
-    const clearBtn = document.querySelector('.btn-clear-search');
-    
-    if (searchInput && clearBtn) {
-        searchInput.addEventListener('input', function() {
-            if (this.value.length > 0) {
-                clearBtn.classList.add('show');
-            } else {
-                clearBtn.classList.remove('show');
-            }
-        });
-    }
+    tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
 });
 </script>
 {% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container detail-module mt-3 mb-4">
+    <div class="card">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i> Traslado {{ transfer.transfer_number }}</h5>
+            <span class="badge rounded-pill {% if transfer.status == 'confirmado' %}bg-white text-success{% elif transfer.status == 'anulado' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ transfer.status|capitalize }}</span>
+        </div>
+        <div class="card-body p-0">
+            {% if transfer.status == 'anulado' %}
+            <div class="alert alert-secondary py-2 mb-0 mx-3 mt-3" role="status">Este traslado fue anulado y se conserva para auditoría.</div>
+            {% endif %}
+            <div class="p-3 p-md-4">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Fecha</div>
+                        <div class="info-value">{{ transfer.date.strftime('%d/%m/%Y') if transfer.date else '—' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Origen</div>
+                        <div class="info-value">{{ transfer.warehouse_origin.name }} <span class="text-muted fw-normal">({{ transfer.warehouse_origin.warehouse_type|warehouse_type_label }})</span></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Destino</div>
+                        <div class="info-value">{{ transfer.warehouse_dest.name }} <span class="text-muted fw-normal">({{ transfer.warehouse_dest.warehouse_type|warehouse_type_label }})</span></div>
+                    </div>
+                    {% if transfer.notes %}
+                    <div class="info-item" style="grid-column: 1 / -1;">
+                        <div class="info-label">Notas</div>
+                        <div class="info-value fw-normal">{{ transfer.notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="px-3 px-md-4 pb-3 pb-md-4">
+                <div class="section-card mb-3">
+                    <div class="section-title"><i class="fas fa-box-open"></i> Ítems</div>
+                    {% if transfer.items %}
+                    <div class="table-responsive">
+                        <table class="table table-modern w-100">
+                            <thead><tr><th>Producto</th><th class="text-end" style="width:6rem;">Cantidad</th></tr></thead>
+                            <tbody>
+                                {% for item in transfer.items %}
+                                <tr><td>{{ item.product.code }} — {{ item.product.name }}</td><td class="text-end">{{ item.quantity }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Sin ítems.</p>
+                    {% endif %}
+                </div>
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center btn-actions pt-2">
+                    <a href="{{ url_with_token('transfer.list_transfers') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Volver</a>
+                    {% if transfer.status == 'borrador' %}
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ url_with_token('transfer.edit_transfer', id=transfer.id) }}" class="btn btn-success btn-sm"><i class="fas fa-edit me-1"></i> Editar</a>
+                        <form method="post" action="{{ url_with_token('transfer.cancel_transfer', id=transfer.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-times me-1"></i> Anular</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

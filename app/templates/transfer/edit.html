@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .transfer-edit .card-body { padding: 0.75rem 1rem; }
+    .transfer-edit .form-label { margin-bottom: 0.2rem; font-size: 0.875rem; }
+    .transfer-edit .card-header { padding: 0.5rem 1rem; font-size: 1rem; }
+    .transfer-edit textarea.notes-compact { resize: vertical; min-height: 2.2rem; font-size: 0.9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-3 transfer-edit">
+    <div class="card shadow-sm mb-2">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="mb-0" style="font-size:1.1rem;"><i class="fas fa-exchange-alt"></i> {{ transfer.transfer_number }} - Editar</h5>
+            <span class="badge bg-warning text-dark">Borrador</span>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_with_token('transfer.edit_transfer', id=transfer.id) }}">
+                {{ form.hidden_tag() }}
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        {{ form.warehouse_origin_id.label(class="form-label") }}
+                        {{ form.warehouse_origin_id(class="form-select form-select-sm") }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ form.warehouse_dest_id.label(class="form-label") }}
+                        {{ form.warehouse_dest_id(class="form-select form-select-sm") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.date.label(class="form-label") }}
+                        <input type="text" class="form-control form-control-sm" value="{{ form.date.data.strftime('%d/%m/%Y') if form.date.data else '' }}" readonly>
+                        <input type="hidden" name="date" value="{{ form.date.data.strftime('%Y-%m-%d') if form.date.data else '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-success btn-sm w-100">Guardar cabecera</button>
+                    </div>
+                </div>
+                <div class="row g-2 mt-1 align-items-end">
+                    <div class="col">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control form-control-sm notes-compact", rows=1, placeholder="Opcional") }}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header py-2">Ítems del traslado</div>
+        <div class="card-body">
+            <p class="text-muted small mb-1">Busque un producto, selecciónelo, indique cantidad (unidades o cajas) y pulse Añadir.</p>
+            <div class="row g-2 align-items-end mb-1">
+                <div class="col-md-5">
+                    <label class="form-label">Buscar producto</label>
+                    <input type="text" id="productSearch" class="form-control form-control-sm" placeholder="Código, nombre o código de barras" data-warehouse-id="{{ transfer.warehouse_origin_id }}">
+                    <small id="selectedProductLabel" class="text-success" style="display:none;"></small>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Cant. (unidades)</label>
+                    <input type="number" id="itemQuantity" class="form-control form-control-sm" min="1" value="1">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">O en cajas</label>
+                    <input type="number" id="itemQuantityBoxes" class="form-control form-control-sm" min="0" placeholder="0" title="Unidades por caja">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" id="btnAddBySearch" class="btn btn-primary btn-sm w-100"><i class="fas fa-plus"></i> Añadir</button>
+                </div>
+            </div>
+            <div id="searchResults" class="list-group list-group-flush mb-2" style="display:none; max-height:120px; overflow-y:auto;"></div>
+
+            <div class="accordion accordion-flush mb-2" id="accordionSelectProduct">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed py-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSelectListTransfer" aria-expanded="false" style="font-size:0.9rem;">O elegir de la lista</button>
+                    </h2>
+                    <div id="collapseSelectListTransfer" class="accordion-collapse collapse" data-bs-parent="#accordionSelectProduct">
+                        <div class="accordion-body py-2">
+                            <form method="post" action="{{ url_with_token('transfer.add_transfer_item', id=transfer.id) }}" class="row g-2 align-items-end">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <div class="col-md-5">
+                                    <label class="form-label">Producto</label>
+                                    <select name="product_id" class="form-select form-select-sm" required>
+                                        <option value="">-- Seleccionar --</option>
+                                        {% for p in products %}
+                                        <option value="{{ p.id }}">{{ p.code }} - {{ p.name }}{% if p.unit_of_sale == 'caja' and p.units_per_package %} ({{ p.units_per_package }} un/caja){% endif %}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Cant.</label>
+                                    <input type="number" name="quantity" class="form-control form-control-sm" min="1" value="1" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Cajas</label>
+                                    <input type="number" name="quantity_boxes" class="form-control form-control-sm" min="0" placeholder="0">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="fas fa-plus"></i> Añadir</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if transfer.items %}
+            <table class="table table-sm mb-2">
+                <thead><tr><th>Producto</th><th>Cantidad</th><th></th></tr></thead>
+                <tbody>
+                    {% for item in transfer.items %}
+                    <tr>
+                        <td>{{ item.product.code }} - {{ item.product.name }}</td>
+                        <td>
+                            <form method="post" action="{{ url_with_token('transfer.update_transfer_item', id=transfer.id, item_id=item.id) }}" class="d-inline-flex align-items-center gap-1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control form-control-sm" style="width:4.5rem;">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Cambiar</button>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="post" action="{{ url_with_token('transfer.remove_transfer_item', id=transfer.id, item_id=item.id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Quitar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <form method="post" action="{{ url_with_token('transfer.confirm_transfer', id=transfer.id) }}" class="mb-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check"></i> Confirmar traslado</button>
+            </form>
+            {% else %}
+            <p class="text-muted small mb-2">Agregue ítems y confirme el traslado.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="mt-2">
+        <a href="{{ url_with_token('transfer.list_transfers') }}" class="btn btn-outline-secondary btn-sm">Volver a traslados</a>
+        <a href="{{ url_with_token('transfer.view_transfer', id=transfer.id) }}" class="btn btn-outline-primary btn-sm">Ver detalle</a>
+    </div>
+</div>
+<script>
+(function() {
+    var searchInput = document.getElementById('productSearch');
+    var quantityInput = document.getElementById('itemQuantity');
+    var quantityBoxesInput = document.getElementById('itemQuantityBoxes');
+    var resultsDiv = document.getElementById('searchResults');
+    var selectedLabel = document.getElementById('selectedProductLabel');
+    var warehouseId = searchInput ? searchInput.getAttribute('data-warehouse-id') : null;
+    var addItemUrl = "{{ url_with_token('transfer.add_transfer_item', id=transfer.id) }}";
+    var csrf = "{{ csrf_token }}";
+    var searchTimeout = null;
+    var selectedProductId = null;
+
+    if (!searchInput) return;
+
+    function clearSelection() {
+        selectedProductId = null;
+        if (selectedLabel) { selectedLabel.style.display = 'none'; selectedLabel.textContent = ''; }
+    }
+    function setSelection(productId, label) {
+        selectedProductId = productId;
+        if (selectedLabel) { selectedLabel.textContent = 'Seleccionado: ' + label; selectedLabel.style.display = 'block'; }
+        resultsDiv.style.display = 'none';
+        resultsDiv.innerHTML = '';
+        if (quantityInput) quantityInput.focus();
+    }
+
+    function doSearch(callback) {
+        var q = searchInput.value.trim();
+        if (!q) { clearSelection(); resultsDiv.style.display = 'none'; resultsDiv.innerHTML = ''; if (callback) callback([]); return; }
+        var url = "{{ url_for('delivery.product_lookup') }}?q=" + encodeURIComponent(q);
+        if (warehouseId) url += "&warehouse_id=" + warehouseId;
+        fetch(url).then(function(r){ return r.json(); }).then(function(data){
+            var products = data.products || [];
+            resultsDiv.innerHTML = '';
+            if (products.length === 0) {
+                resultsDiv.innerHTML = '<div class="list-group-item">Sin resultados</div>';
+            } else {
+                products.forEach(function(p) {
+                    var stockInfo = p.stock_in_warehouse !== null ? ' (Stock origen: ' + p.stock_in_warehouse + ')' : '';
+                    var label = p.code + ' - ' + p.name + stockInfo;
+                    var el = document.createElement('a');
+                    el.href = '#';
+                    el.className = 'list-group-item list-group-item-action';
+                    el.textContent = label;
+                    el.onclick = function(e) { e.preventDefault(); setSelection(p.id, p.code + ' - ' + p.name); };
+                    resultsDiv.appendChild(el);
+                });
+            }
+            resultsDiv.style.display = 'block';
+            if (callback) callback(products);
+        });
+    }
+    function addItem(productId) {
+        var qty = parseInt(quantityInput.value, 10) || 1;
+        var qtyBoxes = parseInt(quantityBoxesInput.value, 10) || 0;
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = addItemUrl;
+        form.innerHTML = '<input type="hidden" name="csrf_token" value="' + csrf + '"><input type="hidden" name="product_id" value="' + productId + '"><input type="hidden" name="quantity" value="' + qty + '"><input type="hidden" name="quantity_boxes" value="' + qtyBoxes + '">';
+        document.body.appendChild(form);
+        form.submit();
+    }
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (searchTimeout) clearTimeout(searchTimeout);
+            doSearch(function(products) {
+                if (products.length === 1) setSelection(products[0].id, products[0].code + ' - ' + products[0].name);
+            });
+        }
+    });
+    searchInput.addEventListener('input', function() {
+        clearSelection();
+        if (searchTimeout) clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(doSearch, 250);
+    });
+    if (document.getElementById('btnAddBySearch')) {
+        document.getElementById('btnAddBySearch').onclick = function() {
+            if (searchTimeout) clearTimeout(searchTimeout);
+            if (selectedProductId) {
+                addItem(selectedProductId);
+            } else {
+                doSearch();
+            }
+        };
+    }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container module-list mt-3 mb-4">
+    <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="page-title"><i class="fas fa-truck"></i> Despachos</h1>
+            <p class="page-subtitle mb-0">Transferencias y entregas desde el centro de acopio a puntos de despacho.</p>
+        </div>
+        <a href="{{ url_with_token('delivery.create_delivery') }}" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-plus me-1"></i> Nuevo Despacho</a>
+    </div>
+    {% set filter_action = url_with_token('delivery.list_deliveries') %}
+    {% include '_list_filters.html' with context %}
+    <div class="card">
+        <div class="card-body p-0">
+            {% if deliveries %}
+            <div class="table-responsive">
+                <table class="table table-modern table-hover table-sm mb-0">
+                    <thead><tr><th>Número</th><th>Fecha</th><th>Sección</th><th>Punto</th><th>Receptor</th><th>Estado</th><th class="text-end" style="min-width:10rem;">Acciones</th></tr></thead>
+                    <tbody>
+                        {% for d in deliveries %}
+                        <tr>
+                            <td class="align-middle">{{ d.delivery_number }}</td>
+                            <td class="align-middle">{{ d.date.strftime('%d/%m/%Y') if d.date else '—' }}</td>
+                            <td class="align-middle">{{ d.warehouse.name }}</td>
+                            <td class="align-middle">{{ d.delivery_point.name }}</td>
+                            <td class="align-middle">{{ d.recipient_name or '—' }}</td>
+                            <td class="align-middle text-center">
+                                <span class="badge {% if d.status == 'confirmado' %}bg-success{% elif d.status == 'anulado' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ d.status|capitalize }}</span>
+                            </td>
+                            <td class="align-middle text-end">
+                                <a href="{{ url_with_token('delivery.view_delivery', id=d.id) }}" class="btn btn-sm btn-outline-primary">Ver</a>
+                                {% if d.status == 'borrador' %}
+                                <a href="{{ url_with_token('delivery.edit_delivery', id=d.id) }}" class="btn btn-sm btn-outline-success">Editar</a>
+                                <a href="{{ url_with_token('delivery.confirm_delivery', id=d.id) }}" class="btn btn-sm btn-success">Confirmar</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-module"><i class="fas fa-truck d-block"></i><p class="mb-2">No hay despachos.</p><a href="{{ url_with_token('delivery.create_delivery') }}" class="btn btn-success btn-sm"><i class="fas fa-plus me-1"></i> Crear uno</a></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

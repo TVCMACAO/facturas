@@ -178,6 +178,23 @@
         color: #6c757d;
     }
     
+    .form-check-input.user-active-switch {
+        width: 3rem;
+        height: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .form-check-input.user-active-switch:checked {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+    
+    .form-check-input.user-active-switch:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
     .user-actions {
         display: flex;
         flex-direction: row;
@@ -272,38 +289,21 @@
 <div class="container-fluid px-4" style="padding-top: 1rem; padding-bottom: 1rem;">
     <!-- Header -->
     <div class="admin-header">
-        <h1>
-            <i class="fas fa-users-cog"></i>
-            {{ title }}
-        </h1>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="margin: 0;">
+                <i class="fas fa-users-cog"></i>
+                {{ title }}
+            </h1>
+            <a href="{{ url_for('admin.create_user') }}" class="btn-create-user" style="background: white; color: #28a745; padding: 0.75rem 1.5rem; border-radius: 10px; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease;">
+                <i class="fas fa-plus"></i> Crear Usuario
+            </a>
+        </div>
     </div>
     
-    <!-- Search Section -->
-    <div class="search-card">
-        <form action="{{ url_for('admin.list_users') }}" method="get" class="d-flex gap-2 align-items-center" id="searchForm">
-            <div class="search-input-wrapper flex-grow-1">
-                <i class="fas fa-search"></i>
-                <input type="search" 
-                       class="form-control" 
-                       id="searchInput"
-                       placeholder="Buscar por nombre, usuario o email" 
-                       name="q" 
-                       value="{{ q if q else '' }}">
-                {% if q %}
-                <button type="button" class="btn-clear-search show" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
-                    <i class="fas fa-times-circle"></i>
-                </button>
-                {% else %}
-                <button type="button" class="btn-clear-search" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
-                    <i class="fas fa-times-circle"></i>
-                </button>
-                {% endif %}
-            </div>
-            <button class="btn btn-success" type="submit" style="height: 50px; width: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Buscar" data-bs-toggle="tooltip" data-bs-placement="top">
-                <i class="fas fa-search"></i>
-            </button>
-        </form>
-    </div>
+    {% set filter_action = url_with_token('admin.list_users') %}
+    {% set filter_date_from = '' %}
+    {% set filter_date_to = '' %}
+    {% include '_list_filters.html' with context %}
     
     <!-- Users Table -->
     <div class="users-table-wrapper">
@@ -315,6 +315,7 @@
                     <th>Usuario</th>
                     <th>Email</th>
                     <th>Rol</th>
+                    <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -336,12 +337,20 @@
                         </td>
                         <td>
                             <span class="user-role {{ user.role }}">
-                                {% if user.role == 'admin' %}
-                                    <span class="badge bg-danger">Admin</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Usuario</span>
-                                {% endif %}
+                                <span class="badge {% if user.role == 'admin' or user.role == 'super_admin' %}bg-danger{% elif user.role == 'bodega_principal' %}bg-info{% elif user.role == 'despachador' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ user.role|role_label }}</span>
                             </span>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch d-flex justify-content-center">
+                                <input class="form-check-input user-active-switch" 
+                                       type="checkbox" 
+                                       role="switch" 
+                                       id="switch-{{ user.id }}"
+                                       data-user-id="{{ user.id }}"
+                                       data-username="{{ user.username }}"
+                                       {% if user.id == current_user.id %}disabled title="No puedes desactivarte a ti mismo"{% endif %}
+                                       {% if user.active %}checked{% endif %}>
+                            </div>
                         </td>
                         <td>
                             <div class="user-actions">
@@ -352,7 +361,8 @@
                                    data-bs-placement="top">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <form action="{{ url_for('admin.reset_user_password', id=user.id) }}" method="post" style="display:inline;">
+                                <form action="{{ url_with_token('admin.reset_user_password', id=user.id) }}" method="post" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                     <button type="submit" 
                                             class="btn-action btn-action-reset" 
                                             title="Resetear contraseña"
@@ -363,7 +373,8 @@
                                         <i class="fas fa-key"></i>
                                     </button>
                                 </form>
-                                <form action="{{ url_for('admin.delete_user', id=user.id) }}" method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar a este usuario?');">
+                                <form action="{{ url_with_token('admin.delete_user', id=user.id) }}" method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar a este usuario?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                     <button type="submit" 
                                             class="btn-action btn-action-delete" 
                                             title="Eliminar usuario"
@@ -379,7 +390,7 @@
                     {% endfor %}
                 {% else %}
                     <tr class="empty-table-row">
-                        <td colspan="6">
+                        <td colspan="7">
                             <i class="fas fa-users-slash" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem; display: block;"></i>
                             <div>No hay usuarios que coincidan con la búsqueda</div>
                         </td>
@@ -425,6 +436,64 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+    
+    // Manejar el switch de activar/desactivar usuario
+    const switches = document.querySelectorAll('.user-active-switch');
+    switches.forEach(function(switchEl) {
+        switchEl.addEventListener('change', function() {
+            const userId = this.getAttribute('data-user-id');
+            const username = this.getAttribute('data-username');
+            const isActive = this.checked;
+            
+            // Confirmar acción
+            const action = isActive ? 'activar' : 'desactivar';
+            if (!confirm(`¿Estás seguro de que quieres ${action} al usuario "${username}"?`)) {
+                // Revertir el cambio si el usuario cancela
+                this.checked = !isActive;
+                return;
+            }
+            
+            // Enviar petición AJAX
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            fetch(`/admin/users/${userId}/toggle_active`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({ csrf_token: csrfToken })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Mostrar mensaje de éxito
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = `alert alert-${data.active ? 'success' : 'warning'} alert-dismissible fade show position-fixed`;
+                    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                    alertDiv.innerHTML = `
+                        <strong>${data.active ? '✓' : '⚠'}</strong> ${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.body.appendChild(alertDiv);
+                    
+                    // Remover el mensaje después de 3 segundos
+                    setTimeout(() => {
+                        alertDiv.remove();
+                    }, 3000);
+                } else {
+                    // Revertir el cambio si hay error
+                    this.checked = !isActive;
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                // Revertir el cambio si hay error
+                this.checked = !isActive;
+                console.error('Error:', error);
+                alert('Error al cambiar el estado del usuario. Por favor, intenta de nuevo.');
+            });
+        });
+    });
 });
 </script>
 {% endblock %}

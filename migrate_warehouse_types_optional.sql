@@ -1,0 +1,4 @@
+-- Migración opcional: unificar warehouse_type al modelo centro de acopio (general/farmacia).
+-- El código ya trata mayorista/minorista como equivalentes; ejecutar solo si quieres normalizar la BD.
+-- UPDATE warehouse SET warehouse_type = 'general' WHERE warehouse_type = 'mayorista';
+-- UPDATE warehouse SET warehouse_type = 'farmacia' WHERE warehouse_type = 'minorista';

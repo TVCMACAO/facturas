@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .user-form-container {
+        max-width: 700px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    
+    .user-form-card {
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        padding: 2.5rem;
+        border: none;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .user-form-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+    }
+    
+    .user-form-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .user-form-header h1 {
+        color: #2c3e50;
+        font-weight: 700;
+        font-size: 1.75rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+    
+    .user-form-header .icon {
+        color: #28a745;
+        font-size: 2rem;
+    }
+    
+    .form-group-modern {
+        margin-bottom: 1.75rem;
+    }
+    
+    .form-group-modern label {
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .form-group-modern label i {
+        color: #28a745;
+        font-size: 1.1rem;
+        width: 20px;
+    }
+    
+    .form-control-modern {
+        width: 100%;
+        padding: 0.875rem 1.25rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: #495057;
+        background-color: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control-modern:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.15);
+        outline: none;
+    }
+    
+    .form-control-modern select {
+        cursor: pointer;
+    }
+    
+    .btn-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .btn-create-user {
+        flex: 1;
+        padding: 0.875rem 1.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #fff;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    
+    .btn-create-user:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        color: #fff;
+    }
+    
+    .btn-create-user:active {
+        transform: translateY(0);
+    }
+    
+    .btn-cancel {
+        flex: 1;
+        padding: 0.875rem 1.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #6c757d;
+        background: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    
+    .btn-cancel:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        color: #495057;
+    }
+    
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    
+    .password-strength {
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="user-form-container">
+    <div class="user-form-card">
+        <div class="user-form-header">
+            <h1>
+                <i class="fas fa-user-plus icon"></i>
+                {{ title }}
+            </h1>
+        </div>
+        
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group-modern">
+                {{ form.name.label }}
+                {{ form.name(class="form-control-modern", placeholder="Ingrese el nombre completo") }}
+                {% if form.name.errors %}
+                    {% for error in form.name.errors %}
+                        <div class="error-message">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <div class="form-group-modern">
+                {{ form.username.label }}
+                {{ form.username(class="form-control-modern", placeholder="Ingrese el nombre de usuario") }}
+                {% if form.username.errors %}
+                    {% for error in form.username.errors %}
+                        <div class="error-message">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <div class="form-group-modern">
+                {{ form.email.label }}
+                {{ form.email(class="form-control-modern", placeholder="usuario@ejemplo.com") }}
+                {% if form.email.errors %}
+                    {% for error in form.email.errors %}
+                        <div class="error-message">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <div class="form-group-modern">
+                {{ form.password.label }}
+                {{ form.password(class="form-control-modern", placeholder="Mínimo 6 caracteres") }}
+                <div class="password-strength">La contraseña debe tener al menos 6 caracteres</div>
+                {% if form.password.errors %}
+                    {% for error in form.password.errors %}
+                        <div class="error-message">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <div class="form-group-modern">
+                {{ form.password2.label }}
+                {{ form.password2(class="form-control-modern", placeholder="Repita la contraseña") }}
+                {% if form.password2.errors %}
+                    {% for error in form.password2.errors %}
+                        <div class="error-message">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            {% if is_super_admin and form.company_id %}
+            <div class="form-group-modern">
+                {{ form.company_id.label }}
+                {{ form.company_id(class="form-control-modern") }}
+                {% if form.company_id.errors %}
+                    {% for error in form.company_id.errors %}
+                        <div class="error-message">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <div class="form-group-modern">
+                {{ form.role.label }}
+                {{ form.role(class="form-control-modern") }}
+                {% if form.role.errors %}
+                    {% for error in form.role.errors %}
+                        <div class="error-message">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+                {% if not is_super_admin %}
+                <div class="password-strength">Solo los Super Administradores pueden crear administradores</div>
+                {% endif %}
+            </div>
+            {% if not is_super_admin %}
+            <div class="form-group-modern">
+                {{ form.assigned_delivery_point_id.label }}
+                {{ form.assigned_delivery_point_id(class="form-control-modern") }}
+                <small class="text-muted">Requerido para rol Minorista.</small>
+            </div>
+            {% endif %}
+            
+            <div class="btn-actions">
+                {{ form.submit(class="btn-create-user") }}
+                <a href="{{ url_for('admin.list_users') }}" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

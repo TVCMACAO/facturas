@@ -320,3 +320,15 @@ $.get('/products/' + productId + '/stock', {quote_id: quoteId}, function(stockDa
 ---
 
 **Última actualización:** 2024
+
+---
+
+## 10. Inventario dual (limitación conocida)
+
+El sistema maneja dos niveles de stock:
+
+- **Ventas / cotizaciones / facturas:** usan `Product.stock` (stock global del producto por empresa).
+- **Despachos, traslados y recepciones:** usan `ProductWarehouseStock` y `ProductDeliveryPointStock`.
+
+Por tanto, el stock mostrado en cotizaciones puede no coincidir con el stock físico por bodega o punto de despacho. La unificación de ambos modelos queda planificada para una fase posterior.
+

@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.delivery-edit-form .card-body { padding: 1rem 1.25rem; }
+.delivery-edit-form .form-label { margin-bottom: 0.25rem; font-size: 0.875rem; }
+.delivery-edit-form .form-control, .delivery-edit-form .form-select { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
+.delivery-edit-form .card-header { padding: 0.5rem 1rem; font-size: 0.95rem; }
+.delivery-edit-form .accordion-button { padding: 0.4rem 0.75rem; font-size: 0.9rem; }
+.delivery-edit-form .accordion-body { padding: 0.5rem 0.75rem; }
+.delivery-edit-form .table { margin-bottom: 0.5rem; }
+.delivery-edit-form .table thead th { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
+.delivery-edit-form .table td { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container delivery-edit-form mt-2 mb-3">
+    <div class="card shadow-sm mb-2">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
+            <h5 class="mb-0" style="font-size:1.1rem"><i class="fas fa-truck"></i> {{ delivery.delivery_number }} - Editar</h5>
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-white small"><i class="fas fa-calendar-alt me-1"></i>{{ form.date.data.strftime('%d/%m/%Y') if form.date.data else '' }}</span>
+                <span class="badge bg-warning text-dark">Borrador</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_with_token('delivery.edit_delivery', id=delivery.id) }}">
+                <input type="hidden" name="date" value="{{ form.date.data.strftime('%Y-%m-%d') if form.date.data else '' }}">
+                {{ form.hidden_tag() }}
+                <div class="row g-2 mb-2">
+                    <div class="col-md-5">
+                        {{ form.warehouse_id.label(class="form-label") }}
+                        {% if single_warehouse_and_point %}
+                        <input type="text" class="form-control form-control-sm" value="{{ delivery.warehouse.name }}" readonly>
+                        <input type="hidden" name="warehouse_id" value="{{ delivery.warehouse_id }}">
+                        {% else %}
+                        {{ form.warehouse_id(class="form-select form-select-sm") }}
+                        {% endif %}
+                    </div>
+                    <div class="col-md-5">
+                        {{ form.delivery_point_id.label(class="form-label") }}
+                        {% if single_warehouse_and_point %}
+                        <input type="text" class="form-control form-control-sm" value="{{ delivery.delivery_point.name }}" readonly>
+                        <input type="hidden" name="delivery_point_id" value="{{ delivery.delivery_point_id }}">
+                        {% else %}
+                        {{ form.delivery_point_id(class="form-select form-select-sm") }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-12">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control form-control-sm", rows=2) }}
+                    </div>
+                </div>
+                {% if not single_warehouse_and_point %}
+                <button type="submit" class="btn btn-success btn-sm">Guardar cabecera</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header py-2">Ítems del despacho</div>
+        <div class="card-body">
+            <p class="text-muted small mb-1">Buscar por código, nombre o código de barras. Elija cantidad y pulse Añadir.</p>
+            <div class="row g-2 align-items-end mb-1">
+                <div class="col-md-6">
+                    <label class="form-label">Buscar producto</label>
+                    <input type="text" id="productSearch" class="form-control form-control-sm" placeholder="Código, nombre o código de barras" data-warehouse-id="{{ delivery.warehouse_id }}" autofocus>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Cant.</label>
+                    <input type="number" id="itemQuantity" class="form-control form-control-sm" min="1" value="1">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" id="btnAddBySearch" class="btn btn-primary btn-sm w-100"><i class="fas fa-plus"></i> Añadir</button>
+                </div>
+            </div>
+            <div id="searchResults" class="list-group list-group-flush mb-2" style="display:none; max-height:180px; overflow-y:auto;"></div>
+
+            <div class="accordion mb-2" id="accordionSelectProduct">
+                <div class="accordion-item border-start-0 border-end-0">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed py-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSelectList" aria-expanded="false" aria-controls="collapseSelectList">O elegir de la lista</button>
+                    </h2>
+                    <div id="collapseSelectList" class="accordion-collapse collapse" data-bs-parent="#accordionSelectProduct">
+                        <div class="accordion-body py-1">
+                            <form method="post" action="{{ url_with_token('delivery.add_delivery_item', id=delivery.id) }}" class="row g-2 align-items-end">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <div class="col-md-6">
+                                    <label class="form-label">Producto</label>
+                                    <select name="product_id" class="form-select form-select-sm" required>
+                                        <option value="">-- Seleccionar --</option>
+                                        {% for p in products %}
+                                        <option value="{{ p.id }}">{{ p.code }} - {{ p.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">Cant.</label>
+                                    <input type="number" name="quantity" class="form-control form-control-sm" min="1" value="1" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="fas fa-plus"></i> Añadir</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if delivery.items %}
+            <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead><tr><th>Producto</th><th>Cantidad</th><th></th></tr></thead>
+                <tbody>
+                    {% for item in delivery.items %}
+                    <tr data-item-id="{{ item.id }}">
+                        <td>{{ item.product.code }} - {{ item.product.name }}</td>
+                        <td>
+                            <span class="item-qty-view">{{ item.quantity }}</span>
+                            <form method="post" action="{{ url_with_token('delivery.update_delivery_item', id=delivery.id, item_id=item.id) }}" class="d-inline item-qty-edit-form" style="display:none;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="number" name="quantity" class="form-control form-control-sm d-inline-block" style="width:4rem;" min="1" value="{{ item.quantity }}">
+                                <button type="submit" class="btn btn-sm btn-success py-0">Guardar</button>
+                            </form>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary py-0 btn-edit-qty">Editar</button>
+                            <span class="btn-edit-actions" style="display:none;">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 btn-cancel-edit">Cancelar</button>
+                            </span>
+                            <form method="post" action="{{ url_with_token('delivery.remove_delivery_item', id=delivery.id, item_id=item.id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger py-0">Quitar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            <a href="{{ url_with_token('delivery.confirm_delivery', id=delivery.id) }}" class="btn btn-success btn-sm mt-2"><i class="fas fa-check"></i> Confirmar despacho</a>
+            {% else %}
+            <p class="text-muted small mb-0">Agregue ítems y confirme el despacho.</p>
+            <button type="button" class="btn btn-success btn-sm mt-1" disabled title="Agregue al menos un ítem"><i class="fas fa-check"></i> Confirmar despacho</button>
+            {% endif %}
+        </div>
+    </div>
+    <div class="mt-2">
+        <a href="{{ url_with_token('delivery.list_deliveries') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+        <a href="{{ url_with_token('delivery.view_delivery', id=delivery.id) }}" class="btn btn-outline-primary btn-sm">Ver detalle</a>
+    </div>
+</div>
+<script>
+(function() {
+    var searchInput = document.getElementById('productSearch');
+    var quantityInput = document.getElementById('itemQuantity');
+    var resultsDiv = document.getElementById('searchResults');
+    var warehouseId = document.getElementById('productSearch').getAttribute('data-warehouse-id');
+    var addItemUrl = "{{ url_with_token('delivery.add_delivery_item', id=delivery.id) }}";
+    var csrf = "{{ csrf_token }}";
+    var searchTimeout = null;
+
+    function doSearch(callback) {
+        var q = searchInput.value.trim();
+        if (!q) { resultsDiv.style.display = 'none'; resultsDiv.innerHTML = ''; if (callback) callback([]); return; }
+        var url = "{{ url_for('delivery.product_lookup') }}?q=" + encodeURIComponent(q);
+        if (warehouseId) url += "&warehouse_id=" + warehouseId;
+        fetch(url).then(function(r){ return r.json(); }).then(function(data){
+            var products = data.products || [];
+            resultsDiv.innerHTML = '';
+            if (products.length === 0) {
+                resultsDiv.innerHTML = '<div class="list-group-item">Sin resultados</div>';
+            } else {
+                products.forEach(function(p) {
+                    var stockInfo = p.stock_in_warehouse !== null ? ' (Stock bodega: ' + p.stock_in_warehouse + ')' : '';
+                    var el = document.createElement('a');
+                    el.href = '#';
+                    el.className = 'list-group-item list-group-item-action';
+                    el.textContent = p.code + ' - ' + p.name + stockInfo;
+                    el.dataset.productId = p.id;
+                    el.onclick = function(e) { e.preventDefault(); selectProduct(p); };
+                    resultsDiv.appendChild(el);
+                });
+            }
+            resultsDiv.style.display = 'block';
+            if (callback) callback(products);
+        });
+    }
+    var selectedProduct = null;
+    var searchRow = document.getElementById('productSearch') && document.getElementById('productSearch').closest('.row');
+    var selectedLabel = document.getElementById('selectedProductLabel');
+    if (!selectedLabel) {
+        var lbl = document.createElement('div');
+        lbl.id = 'selectedProductLabel';
+        lbl.className = 'small text-muted mb-1';
+        lbl.style.display = 'none';
+        if (searchRow && searchRow.parentNode) searchRow.parentNode.insertBefore(lbl, searchRow);
+        selectedLabel = lbl;
+    }
+    function selectProduct(p) {
+        selectedProduct = p;
+        selectedLabel.textContent = 'Añadir: ' + (p.code || '') + ' - ' + (p.name || '');
+        selectedLabel.style.display = 'block';
+    }
+    function addItemWithQuantity() {
+        if (!selectedProduct) return;
+        var qty = parseInt(quantityInput.value, 10) || 1;
+        if (qty < 1) qty = 1;
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = addItemUrl;
+        form.innerHTML = '<input type="hidden" name="csrf_token" value="' + csrf + '"><input type="hidden" name="product_id" value="' + selectedProduct.id + '"><input type="hidden" name="quantity" value="' + qty + '">';
+        document.body.appendChild(form);
+        form.submit();
+    }
+    function scheduleSearch(callback) {
+        if (searchTimeout) clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() { doSearch(callback); }, 200);
+    }
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (searchTimeout) clearTimeout(searchTimeout);
+            searchTimeout = null;
+            doSearch(function(products) {
+                if (products.length === 1) selectProduct(products[0]);
+            });
+        }
+    });
+    searchInput.addEventListener('input', function() { scheduleSearch(); });
+    searchInput.addEventListener('paste', function() { scheduleSearch(); });
+    document.getElementById('btnAddBySearch').onclick = function() {
+        if (searchTimeout) clearTimeout(searchTimeout);
+        if (selectedProduct) addItemWithQuantity();
+        else doSearch(function(products) { if (products.length === 1) selectProduct(products[0]); });
+    };
+    quantityInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && selectedProduct) { e.preventDefault(); addItemWithQuantity(); }
+    });
+    document.querySelectorAll('.btn-edit-qty').forEach(function(btn) {
+        btn.onclick = function() {
+            var tr = btn.closest('tr');
+            tr.querySelector('.item-qty-view').style.display = 'none';
+            tr.querySelector('.item-qty-edit-form').style.display = 'inline';
+            btn.style.display = 'none';
+            tr.querySelector('.btn-edit-actions').style.display = 'inline';
+            var numInput = tr.querySelector('input[name="quantity"]');
+            if (numInput) { numInput.focus(); numInput.select(); }
+        };
+    });
+    document.querySelectorAll('.btn-cancel-edit').forEach(function(btn) {
+        btn.onclick = function() {
+            var tr = btn.closest('tr');
+            tr.querySelector('.item-qty-view').style.display = '';
+            tr.querySelector('.item-qty-edit-form').style.display = 'none';
+            tr.querySelector('.btn-edit-qty').style.display = '';
+            tr.querySelector('.btn-edit-actions').style.display = 'none';
+        };
+    });
+})();
+</script>
+{% endblock %}

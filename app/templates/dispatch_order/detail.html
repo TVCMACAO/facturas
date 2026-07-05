@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container detail-module mt-3 mb-4">
+    <div class="card">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2 flex-wrap gap-2">
+            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i> Pedido {{ order.order_number }}</h5>
+            <span class="badge rounded-pill {% if order.status == 'recibido' %}bg-white text-success{% elif order.status == 'en_preparacion' %}bg-info{% else %}bg-warning text-dark{% endif %}">{{ order.status|replace('_', ' ')|capitalize }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="p-3 p-md-4">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Punto de despacho</div>
+                        <div class="info-value">{{ order.delivery_point.name if order.delivery_point else '—' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Solicitado por</div>
+                        <div class="info-value">{{ order.requested_by.name if order.requested_by else '—' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Fecha</div>
+                        <div class="info-value">{{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '—' }}</div>
+                    </div>
+                    {% if order.delivery_id %}
+                    <div class="info-item">
+                        <div class="info-label">Despacho asociado</div>
+                        <div class="info-value"><a href="{{ url_with_token('delivery.view_delivery', id=order.delivery_id) }}">{{ order.delivery.delivery_number if order.delivery else order.delivery_id }}</a></div>
+                    </div>
+                    {% endif %}
+                    {% if order.notes %}
+                    <div class="info-item" style="grid-column: 1 / -1;">
+                        <div class="info-label">Notas</div>
+                        <div class="info-value fw-normal">{{ order.notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="px-3 px-md-4 pb-3 pb-md-4">
+                <div class="section-card mb-3">
+                    <div class="section-title"><i class="fas fa-box-open"></i> Ítems</div>
+                    {% if order.items %}
+                    <div class="table-responsive">
+                        <table class="table table-modern w-100">
+                            <thead><tr><th>Producto</th><th class="text-end" style="width:6rem;">Cantidad</th></tr></thead>
+                            <tbody>
+                                {% for item in order.items %}
+                                <tr><td>{{ item.product.code }} — {{ item.product.name }}</td><td class="text-end">{{ item.quantity }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Sin ítems.</p>
+                    {% endif %}
+                </div>
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center btn-actions pt-2">
+                    {% if can_create_delivery|default(false) %}
+                    <a href="{{ url_with_token('dispatch_order.list_pending') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Volver</a>
+                    {% else %}
+                    <a href="{{ url_with_token('dispatch_order.list_my_orders') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Volver</a>
+                    {% endif %}
+                    {% if can_create_delivery|default(false) %}
+                    {% if not order.delivery_id and order.status in ['pendiente', 'en_preparacion'] %}
+                    <form method="post" action="{{ url_with_token('dispatch_order.create_delivery_from_order', id=order.id) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-truck me-1"></i> Crear despacho desde este pedido</button>
+                    </form>
+                    {% elif order.delivery_id %}
+                    <a href="{{ url_with_token('delivery.edit_delivery', id=order.delivery_id) }}" class="btn btn-success btn-sm">Ir al despacho</a>
+                    {% endif %}
+                    {% elif order.delivery_id %}
+                    <a href="{{ url_with_token('delivery.view_delivery', id=order.delivery_id) }}" class="btn btn-outline-success btn-sm">Ver despacho</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

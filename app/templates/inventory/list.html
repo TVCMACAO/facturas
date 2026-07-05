@@ -283,48 +283,15 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4" style="padding-top: 1rem; padding-bottom: 1rem;">
-    <!-- Header -->
-    <div class="inventory-header">
-        <h1>
-            <i class="fas fa-warehouse"></i>
-            {{ title }}
-        </h1>
+<div class="container-fluid module-list px-4" style="padding-top: 1rem; padding-bottom: 1rem;">
+    <div class="page-header mb-2">
+        <h1 class="page-title"><i class="fas fa-warehouse"></i> {{ title }}</h1>
     </div>
+    {% set filter_action = url_with_token('inventory.list_inventory') %}
+    {% include '_list_filters.html' with context %}
     
-    <!-- Search Section -->
-    <div class="search-card">
-        <form action="{{ url_for('inventory.list_inventory') }}" method="get" class="d-flex gap-2 align-items-center" id="searchForm">
-            <div class="search-input-wrapper flex-grow-1">
-                <i class="fas fa-search"></i>
-                <input type="search" 
-                       class="form-control" 
-                       id="q"
-                       placeholder="Buscar por nombre o descripción" 
-                       name="q" 
-                       value="{{ q if q else '' }}">
-                {% if q %}
-                <button type="button" class="btn-clear-search show" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
-                    <i class="fas fa-times-circle"></i>
-                </button>
-                {% else %}
-                <button type="button" class="btn-clear-search" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
-                    <i class="fas fa-times-circle"></i>
-                </button>
-                {% endif %}
-            </div>
-            <select name="stock_filter" id="stock_filter" class="form-control" style="width: auto; min-width: 200px; height: 50px; padding: 0.5rem 1rem; border: 2px solid #28a745; border-radius: 8px; font-size: 0.95rem; cursor: pointer;">
-                <option value="all" {% if stock_filter == 'all' or not stock_filter %}selected{% endif %}>📦 Todos los productos</option>
-                <option value="out_of_stock" {% if stock_filter == 'out_of_stock' %}selected{% endif %}>🚫 Stock agotado</option>
-                <option value="low_stock" {% if stock_filter == 'low_stock' %}selected{% endif %}>⚠️ Stock bajo</option>
-            </select>
-            <button class="btn btn-success" type="submit" style="height: 50px; width: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Buscar" data-bs-toggle="tooltip" data-bs-placement="top">
-                <i class="fas fa-search"></i>
-            </button>
-        </form>
-    </div>
-    
-    <!-- Inventory Table -->
+    <div class="card">
+    <div class="card-body p-0">
     <div class="inventory-table-wrapper">
         <table class="inventory-table">
             <thead>
@@ -338,8 +305,8 @@
                 </tr>
             </thead>
             <tbody>
-                {% if products %}
-                    {% for product in products %}
+                {% if product_stocks %}
+                    {% for product, stock_qty in product_stocks %}
                     <tr>
                         <td>
                             <span class="product-code">{{ product.code }}</span>
@@ -367,23 +334,23 @@
                             <span class="product-price">{{ product.price|currency_format }}</span>
                         </td>
                         <td>
-                            {% if product.stock <= 0 %}
+                            {% if stock_qty <= 0 %}
                                 <span class="product-stock stock-agotado">
                                     <i class="fas fa-ban" style="font-size: 0.75rem;"></i> Agotado
                                 </span>
-                            {% elif product.stock < 5 %}
+                            {% elif stock_qty < 5 %}
                                 <span class="product-stock stock-bajo">
-                                    <i class="fas fa-exclamation-triangle"></i> {{ product.stock }} (Bajo)
+                                    <i class="fas fa-exclamation-triangle"></i> {{ stock_qty }} (Bajo)
                                 </span>
                             {% else %}
-                                <span class="product-stock">{{ product.stock }}</span>
+                                <span class="product-stock">{{ stock_qty }}</span>
                             {% endif %}
                         </td>
                         <td>
                             <div class="product-actions">
-                                <a href="{{ url_for('inventory.adjust_stock', id=product.id) }}" 
+                                <a href="{{ url_with_token('inventory.adjust_stock', id=product.id) }}{% if warehouse %}&warehouse_id={{ warehouse.id }}{% endif %}" 
                                    class="btn-action btn-action-stock" 
-                                   title="Ajustar stock"
+                                   title="Ajustar stock en bodega"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top">
                                     <i class="fas fa-boxes"></i>
@@ -396,12 +363,14 @@
                     <tr class="empty-table-row">
                         <td colspan="6">
                             <i class="fas fa-box-open" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem; display: block;"></i>
-                            <div>No hay productos registrados en el inventario</div>
+                            <div>No hay productos registrados en el inventario{% if warehouse %} para {{ warehouse.name }}{% endif %}</div>
                         </td>
                     </tr>
                 {% endif %}
             </tbody>
         </table>
+    </div>
+    </div>
     </div>
 </div>
 
@@ -439,7 +408,7 @@ function clearSearch() {
             stockFilter.value = 'all';
         }
         // Redirigir a la lista sin parámetros de búsqueda
-        window.location.href = "{{ url_for('inventory.list_inventory') }}";
+        window.location.href = "{{ url_with_token('inventory.list_inventory') }}";
     }
 }
 

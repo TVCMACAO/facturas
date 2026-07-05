@@ -1,0 +1,19 @@
+Tesseract OCR (Windows) - Para leer documento del receptor con la cámara
+========================================================================
+
+1. Descargar el instalador:
+   https://github.com/UB-Mannheim/tesseract/wiki
+
+2. Ejecutar el instalador. Durante la instalación, marque el idioma "Spanish"
+   para que reconozca cédulas y nombres en español.
+
+3. Anote la ruta donde se instaló (por ejemplo):
+   C:\Program Files\Tesseract-OCR\tesseract.exe
+
+4. En la carpeta del proyecto, edite el archivo .env y añada una línea (use barras / para evitar problemas):
+   TESSERACT_CMD=C:/Program Files/Tesseract-OCR/tesseract.exe
+   (Use la ruta real de su instalación. Preferir barras / en lugar de \)
+
+5. Reinicie el servidor de la aplicación (python run.py o python start.py).
+
+6. Pruebe de nuevo "Leer documento con cámara" en Confirmar entrega.

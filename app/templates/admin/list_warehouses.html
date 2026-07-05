@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container module-list mt-3 mb-4">
+    <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="page-title"><i class="fas fa-warehouse"></i> Centro de acopio (secciones)</h1>
+            <p class="page-subtitle mb-0">Secciones del centro de acopio para inventario y despachos.</p>
+        </div>
+        <a href="{{ url_with_token('admin.create_warehouse') }}" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-plus me-1"></i> Nueva sección</a>
+    </div>
+    {% set filter_action = url_with_token('admin.list_warehouses') %}
+    {% set filter_date_from = '' %}
+    {% set filter_date_to = '' %}
+    {% include '_list_filters.html' with context %}
+    <div class="card">
+        <div class="card-body p-0">
+            {% if warehouses %}
+            <div class="table-responsive">
+                <table class="table table-modern table-hover table-sm">
+                    <thead><tr><th>Sección</th><th>Tipo</th><th>Ubicación</th><th>Estado</th><th class="text-end" style="width:100px;">Acciones</th></tr></thead>
+                    <tbody>
+                        {% for w in warehouses %}
+                        <tr>
+                            <td><strong>{{ w.name }}</strong>{% if w.code %} <span class="text-muted small">({{ w.code }})</span>{% endif %}</td>
+                            <td><span class="badge bg-light text-dark border">{{ w.warehouse_type|warehouse_type_label }}</span></td>
+                            <td class="text-muted small">{% if w.address %}<i class="fas fa-map-marker-alt me-1 text-success"></i>{{ w.address }}{% else %}—{% endif %}</td>
+                            <td><span class="badge rounded-pill {% if w.active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Activa' if w.active else 'Inactiva' }}</span></td>
+                            <td class="text-end"><a href="{{ url_with_token('admin.edit_warehouse', id=w.id) }}" class="btn btn-sm btn-outline-success"><i class="fas fa-edit me-1"></i> Editar</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-module">
+                <i class="fas fa-warehouse d-block"></i>
+                <p class="mb-2">No hay secciones. Configure Almacén General y Farmacia.</p>
+                <a href="{{ url_with_token('admin.create_warehouse') }}" class="btn btn-success btn-sm"><i class="fas fa-plus me-1"></i> Nueva sección</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

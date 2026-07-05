@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white"><h5 class="mb-0"><i class="fas fa-check-circle"></i> Confirmar entrega - {{ delivery.delivery_number }}</h5></div>
+        <div class="card-body">
+            <p><strong>Bodega:</strong> {{ delivery.warehouse.name }} → <strong>Almacén:</strong> {{ delivery.delivery_point.name }}</p>
+            <p><strong>Ítems:</strong> {% for item in delivery.items %}{{ item.product.name }} x {{ item.quantity }}{% if not loop.last %}; {% endif %}{% endfor %}</p>
+            <form method="post" action="{{ url_with_token('delivery.confirm_delivery', id=delivery.id) }}" enctype="multipart/form-data">
+                {{ form.hidden_tag() }}
+                <div class="alert alert-info mb-3 mb-md-4">
+                    <strong>Personas no registradas:</strong> Use la cámara para tomar una foto del documento de identidad; los datos se leerán con OCR y se guardarán automáticamente.
+                </div>
+                <div class="mb-3">
+                    {{ form.recipient_name.label(class="form-label") }}
+                    {{ form.recipient_name(class="form-control", placeholder="Nombre de quien recibe") }}
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.recipient_document_number.label(class="form-label") }}
+                        {{ form.recipient_document_number(class="form-control") }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.recipient_document_type.label(class="form-label") }}
+                        {{ form.recipient_document_type(class="form-select") }}
+                    </div>
+                </div>
+                <div class="mb-3 p-3 border rounded bg-light tablet-ocr-block">
+                    <input type="file" id="ocrCarnetInput" accept="image/*" capture="environment" style="display:none">
+                    <button type="button" id="btnOcrCarnet" class="btn btn-primary btn-lg w-100 w-md-auto"><i class="fas fa-camera me-2"></i> Leer documento con cámara</button>
+                    <small class="text-muted d-block mt-2">Tome una foto del carnet o documento para rellenar nombre y número automáticamente (OCR). Se guarda en la base de datos al confirmar.</small>
+                    <span id="ocrStatus" class="small ms-2 d-block mt-1"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Fecha y hora de entrega</label>
+                    <input type="text" class="form-control" value="{{ now.strftime('%d/%m/%Y %H:%M') if now else '' }}" readonly>
+                    <small class="text-muted">Se registrará la fecha y hora actual al confirmar.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Evidencias (fotos/documentos)</label>
+                    <input type="file" name="file" class="form-control" accept="image/*,application/pdf" multiple capture="environment">
+                    <small class="text-muted">Puede subir varias imágenes o PDF. En tablet/móvil puede tomar foto.</small>
+                </div>
+                <button type="submit" class="btn btn-success">{{ form.submit.label.text }}</button>
+                <a href="{{ url_with_token('delivery.edit_delivery', id=delivery.id) }}" class="btn btn-outline-secondary">Volver a editar</a>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var input = document.getElementById('ocrCarnetInput');
+    var btn = document.getElementById('btnOcrCarnet');
+    var status = document.getElementById('ocrStatus');
+    var ocrUrl = "{{ url_with_token('delivery.ocr_carnet') }}";
+    var csrfToken = "{{ csrf_token }}";
+
+    if (btn && input) {
+        btn.addEventListener('click', function() { input.click(); });
+        input.addEventListener('change', function() {
+            if (!input.files || !input.files[0]) return;
+            status.textContent = 'Procesando...';
+            status.className = 'small ms-2 text-muted';
+            var fd = new FormData();
+            fd.append('file', input.files[0]);
+            fd.append('csrf_token', csrfToken);
+            var req = new XMLHttpRequest();
+            req.open('POST', ocrUrl);
+            req.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            req.onload = function() {
+                input.value = '';
+                if (req.status === 200) {
+                    try {
+                        var data = JSON.parse(req.responseText);
+                        var nameEl = document.querySelector('[name="recipient_name"]');
+                        var docEl = document.querySelector('[name="recipient_document_number"]');
+                        var typeEl = document.querySelector('[name="recipient_document_type"]');
+                        if (nameEl && data.recipient_name !== undefined) nameEl.value = data.recipient_name || '';
+                        if (docEl && data.recipient_document_number !== undefined) docEl.value = data.recipient_document_number || '';
+                        if (typeEl && data.document_type !== undefined) typeEl.value = data.document_type || '';
+                        if (data.error) {
+                            status.textContent = data.error;
+                            status.className = 'small ms-2 text-danger';
+                        } else if ((data.recipient_name && data.recipient_name.length) && (data.recipient_document_number && data.recipient_document_number.length)) {
+                            status.textContent = 'Datos del receptor rellenados. Revise y pulse Confirmar entrega.';
+                            status.className = 'small ms-2 text-success';
+                        } else if (data.recipient_document_number && data.recipient_document_number.length) {
+                            status.textContent = 'Se leyó el número de documento. Escriba el nombre del receptor a mano.';
+                            status.className = 'small ms-2 text-warning';
+                        } else if (data.recipient_name && data.recipient_name.length) {
+                            status.textContent = 'Se leyó el nombre. Complete el número si hace falta y pulse Confirmar entrega.';
+                            status.className = 'small ms-2 text-warning';
+                        } else {
+                            status.textContent = 'No se detectaron nombre ni documento. Puede escribirlos a mano.';
+                            status.className = 'small ms-2 text-warning';
+                        }
+                    } catch (e) {
+                        status.textContent = 'Error al leer la respuesta.';
+                        status.className = 'small ms-2 text-danger';
+                    }
+                } else {
+                    try {
+                        var err = JSON.parse(req.responseText);
+                        status.textContent = err.error || 'Error en el servidor';
+                    } catch (e) {
+                        status.textContent = 'Error ' + req.status;
+                    }
+                    status.className = 'small ms-2 text-danger';
+                }
+            };
+            req.onerror = function() {
+                input.value = '';
+                status.textContent = 'Error de conexión.';
+                status.className = 'small ms-2 text-danger';
+            };
+            req.send(fd);
+        });
+    }
+})();
+</script>
+{% endblock %}

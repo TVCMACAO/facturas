@@ -306,45 +306,10 @@
         </h1>
     </div>
     
-    <!-- Search Section -->
-    <div class="search-card">
-        <form action="{{ url_for('quotes.list_quotes') }}" method="get" class="row g-3">
-            <div class="col-md-3">
-                <label for="search" class="form-label">Buscar (Número, Cliente, Documento)</label>
-                <input type="text" class="form-control" id="search" placeholder="Ej: 0001, Juan Pérez, 123456789" autocomplete="off">
-            </div>
-            <div class="col-md-3">
-                <label for="start_date" class="form-label">Fecha Inicio</label>
-                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date if start_date else '' }}">
-            </div>
-            <div class="col-md-3">
-                <label for="end_date" class="form-label">Fecha Fin</label>
-                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date if end_date else '' }}">
-            </div>
-            <div class="col-md-3">
-                <label for="status" class="form-label">Estado</label>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <select class="form-select" id="status" name="status" style="flex: 1;">
-                        <option value="all" {% if status == 'all' or status == None %}selected{% endif %}>Todos</option>
-                        <option value="pendiente" {% if status == 'pendiente' %}selected{% endif %}>Pendiente</option>
-                        <option value="aceptada" {% if status == 'aceptada' %}selected{% endif %}>Aceptada</option>
-                        <option value="rechazada" {% if status == 'rechazada' %}selected{% endif %}>Rechazada</option>
-                        <option value="facturada" {% if status == 'facturada' %}selected{% endif %}>Facturada</option>
-                    </select>
-                    <div style="display: flex; gap: 0.25rem; align-items: center;">
-                        <button class="btn btn-search-quotes" type="submit" title="Buscar" data-bs-toggle="tooltip" data-bs-placement="top">
-                            <i class="fas fa-search"></i>
-                        </button>
-                        <a href="{{ url_for('quotes.list_quotes') }}" class="btn btn-clear-quotes" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
-                            <i class="fas fa-times"></i>
-                        </a>
-                        <a href="{{ url_for('quotes.add_quote') }}" class="btn btn-add-quote" title="Añadir Cotización" data-bs-toggle="tooltip" data-bs-placement="top">
-                            <i class="fas fa-plus"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </form>
+    {% set filter_action = url_with_token('quotes.list_quotes') %}
+    {% include '_list_filters.html' with context %}
+    <div class="d-flex justify-content-end mb-2">
+        <a href="{{ url_with_token('quotes.add_quote') }}" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Nueva cotización</a>
     </div>
     
     <!-- Quotes Table -->
@@ -368,7 +333,7 @@
                             <span class="quote-number">{{ quote.quote_number }}</span>
                         </td>
                         <td>
-                            <span class="quote-date">{{ quote.date.strftime('%Y-%m-%d') }}</span>
+                            <span class="quote-date">{{ quote.date.strftime('%d/%m/%Y') }}</span>
                         </td>
                         <td>
                             <span class="quote-client">{{ quote.client.name }}</span>

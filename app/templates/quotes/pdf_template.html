@@ -175,24 +175,19 @@
     <div class="totals">
         <table>
             <tr>
-                <td class="label">SUBTOTAL:</td>
-                <td class="amount">{{ quote.total_amount|currency_format }}</td>
+                <td class="label">Subtotal (ítems):</td>
+                <td class="amount">{{ quote.subtotal|currency_format }}</td>
             </tr>
+            {% if quote.discount_type and quote.discount_type != 'none' and quote.discount_amount and quote.discount_amount > 0 %}
             <tr>
                 <td class="label">Descuento:</td>
-                <td class="amount">{{ 0|currency_format }}</td>
+                <td class="amount">-{{ quote.discount_amount|currency_format }}</td>
             </tr>
-            <tr>
-                <td class="label">SUBTOTAL (Neto):</td>
-                <td class="amount">{{ quote.total_amount|currency_format }}</td>
-            </tr>
-            <tr>
-                <td class="label">IVA (0%):</td>
-                <td class="amount">{{ 0|currency_format }}</td>
-            </tr>
+            {% endif %}
+            {# Sin IVA: TOTAL = valor neto (pasado desde la ruta como total_neto) #}
             <tr class="grand-total">
                 <td class="label">TOTAL:</td>
-                <td class="amount">{{ quote.total_amount|currency_format }}</td>
+                <td class="amount">{{ (total_neto|default(quote.subtotal - (quote.discount_amount or 0)))|currency_format }}</td>
             </tr>
         </table>
         <p style="font-weight: bold; margin-top: 10px;">SON: {{ amount_in_words }}</p>

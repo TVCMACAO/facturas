@@ -1,5 +1,7 @@
 # Documentación de la Aplicación de Cotizaciones y Facturas
 
+**Para usuarios finales (inicio de sesión, roles, uso de módulos):** ver [MANUAL_USUARIO.md](MANUAL_USUARIO.md).
+
 ## 1. Descripción General
 
 Esta es una aplicación web desarrollada con Flask que permite la gestión integral de clientes, productos, cotizaciones y facturas. La aplicación está diseñada para facilitar el proceso de creación de documentos comerciales, su envío por correo electrónico y la conversión de cotizaciones en facturas. Incluye también un sistema de autenticación de usuarios con roles y un módulo básico de gestión de inventario.
@@ -276,3 +278,17 @@ Para subir este proyecto a GitHub, sigue la guía completa en `GUIA_GITHUB.md`.
 - `.env` - **NO se sube** (contiene información sensible)
 
 **Ver `GUIA_GITHUB.md` para instrucciones detalladas paso a paso.**
+
+## 11. Despachos y lectura de carnet (OCR)
+
+El módulo de **Despachos** permite registrar entregas desde una bodega (por ejemplo minorista) a un almacén de entrega. En la pantalla de confirmar entrega existe la opción **"Leer carnet con cámara"**, que toma una foto del documento de identidad del receptor y rellena automáticamente nombre y número de documento mediante OCR.
+
+### 11.1. Requisito opcional: Tesseract
+
+Para que la función **"Leer carnet con cámara"** funcione, el servidor debe tener instalado **Tesseract OCR** y el paquete Python **pytesseract** (incluido en `requirements.txt`).
+
+- **Windows:** Descargar el instalador desde [GitHub - tesseract](https://github.com/UB-Mannheim/tesseract/wiki) e instalar. Añadir Tesseract al PATH o configurar la ruta en código si es necesario.
+- **Linux (Debian/Ubuntu):** `sudo apt install tesseract-ocr tesseract-ocr-spa`
+- **macOS:** `brew install tesseract tesseract-lang`
+
+El idioma español (`spa`) mejora el reconocimiento en carnets en español. Si Tesseract no está instalado, el botón "Leer carnet con cámara" seguirá visible pero al usarlo la aplicación mostrará un mensaje indicando que OCR no está disponible en el servidor; los datos del receptor pueden ingresarse manualmente.

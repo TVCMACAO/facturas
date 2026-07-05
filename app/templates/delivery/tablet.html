@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.tablet-page { max-width: 480px; margin: 0 auto; padding: 1rem; min-height: 100vh; display: flex; flex-direction: column; }
+.tablet-page .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+.tablet-page .card-header { padding: 1rem 1.25rem; font-weight: 600; border: none; }
+.tablet-page .tablet-btn { display: block; width: 100%; padding: 0.9rem 1.1rem; font-size: 1.05rem; font-weight: 600; border-radius: 10px; margin-bottom: 0.5rem; text-align: center; text-decoration: none; transition: all 0.2s; }
+.tablet-page .tablet-btn:hover { color: inherit; }
+.tablet-page .tablet-list { list-style: none; padding: 0; margin: 0; }
+.tablet-page .tablet-list li { margin-bottom: 0.5rem; }
+.tablet-page .tablet-list a { display: block; padding: 0.85rem 1rem; font-size: 0.95rem; background: #f8f9fa; border-radius: 10px; text-decoration: none; color: #212529; border-left: 4px solid #198754; transition: background 0.2s; }
+.tablet-page .tablet-list a:hover { background: #e9ecef; }
+.tablet-page .tablet-badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 20px; margin-left: 0.5rem; font-weight: 600; }
+.tablet-page .tablet-badge.borrador { background: #fff3cd; color: #856404; }
+.tablet-page .tablet-badge.confirmado { background: #d4edda; color: #155724; }
+.tablet-page .tablet-badge.anulado { background: #e2e3e5; color: #383d41; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tablet-page">
+    <div class="card bg-success text-white mb-3">
+        <div class="card-header d-flex flex-column align-items-center text-center">
+            <span class="mb-1"><i class="fas fa-truck"></i> Despachos</span>
+            {% if is_despachador and delivery_point %}<small class="opacity-90">{{ delivery_point.name }}</small>{% endif %}
+        </div>
+        <div class="card-body pt-0">
+            <a href="{{ url_with_token('delivery.tablet_start') }}" class="tablet-btn btn btn-light text-success">
+                <i class="fas fa-plus me-2"></i>{{ 'Iniciar entrega' if is_despachador else 'Nuevo Despacho' }}
+            </a>
+        </div>
+    </div>
+    <ul class="tablet-list">
+        {% for d in deliveries %}
+        <li>
+            <a href="{{ url_with_token('delivery.tablet_dispatch' if d.status == 'borrador' else 'delivery.view_delivery', id=d.id) }}">
+                {{ d.delivery_number }} — {{ d.warehouse.name }} → {{ d.delivery_point.name }}
+                <span class="tablet-badge {{ d.status }}">{{ d.status|capitalize }}</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="text-muted small p-3 text-center">No hay despachos. Pulse "Iniciar entrega" para crear uno.</li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_with_token('main.index') }}" class="tablet-btn btn btn-outline-secondary mt-auto"><i class="fas fa-home me-2"></i> Volver al inicio</a>
+</div>
+{% endblock %}

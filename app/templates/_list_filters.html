@@ -1,0 +1,57 @@
+{# Parcial estándar de filtros para listados. Incluir con: {% include '_list_filters.html' with context %} #}
+{# Espera: filter_action (url del form), filter_q, filter_status, filter_date_from, filter_date_to,
+   filter_extra (lista de dicts con label, name, value, options para selects) opcional #}
+<style>
+.list-filters-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.list-filters-card .form-label { font-size: 0.85rem; font-weight: 600; color: #495057; }
+.list-filters-card .btn-filter { min-width: 90px; }
+.list-filters-card .btn-clear { min-width: 80px; }
+</style>
+<form method="get" action="{{ filter_action }}" class="list-filters-card">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label">Buscar</label>
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="Número, guía..." value="{{ filter_q|default('', true) }}" style="min-width: 160px;">
+        </div>
+        {% if filter_show_status is defined and filter_show_status %}
+        <div class="col-auto">
+            <label class="form-label">Estado</label>
+            <select name="status" class="form-select form-select-sm" style="min-width: 120px;">
+                {% for val, label in filter_status_options|default([], true) %}
+                <option value="{{ val }}" {% if filter_status|default('') == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        {% if filter_show_dates|default(true) %}
+        <div class="col-auto">
+            <label class="form-label">Desde</label>
+            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ filter_date_from|default('', true) }}" style="min-width: 130px;">
+        </div>
+        <div class="col-auto">
+            <label class="form-label">Hasta</label>
+            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ filter_date_to|default('', true) }}" style="min-width: 130px;">
+        </div>
+        {% endif %}
+        {% if filter_extra is defined and filter_extra %}
+        {% for f in filter_extra %}
+        <div class="col-auto">
+            <label class="form-label">{{ f.label }}</label>
+            {% if f.options %}
+            <select name="{{ f.name }}" class="form-select form-select-sm" style="min-width: 160px;">
+                {% for opt_val, opt_label in f.options %}
+                <option value="{{ opt_val }}" {% if (f.value|default(''))|string == (opt_val|string) %}selected{% endif %}>{{ opt_label }}</option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <input type="text" name="{{ f.name }}" class="form-control form-control-sm" value="{{ f.value|default('', true) }}" style="min-width: 140px;">
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-primary btn-filter"><i class="fas fa-search me-1"></i> Filtrar</button>
+            <a href="{{ filter_action }}" class="btn btn-sm btn-outline-secondary btn-clear">Limpiar</a>
+        </div>
+    </div>
+</form>

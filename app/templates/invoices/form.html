@@ -17,7 +17,8 @@
                 
                 <div class="form-group">
                     {{ form.date.label }}<br>
-                    {{ form.date(class="form-control") }}<br>
+                    <input type="text" class="form-control" value="{{ form.date.data.strftime('%d/%m/%Y') if form.date.data else '' }}" readonly>
+                    <input type="hidden" name="date" value="{{ form.date.data.strftime('%Y-%m-%d') if form.date.data else '' }}">
                     {% for error in form.date.errors %}
                     <span style="color: red;">[{{ error }}]</span>
                     {% endfor %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-truck-loading"></i> {{ title }}</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.name.label(class="form-label") }}
+                    {{ form.name(class="form-control") }}
+                    {% if form.name.errors %}{% for e in form.name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}{% endif %}
+                </div>
+                <div class="mb-3">
+                    {{ form.code.label(class="form-label") }}
+                    {{ form.code(class="form-control", placeholder="Opcional: se genera automáticamente (ENT-01, ENT-02, ...) si se deja vacío") }}
+                </div>
+                <div class="mb-3">
+                    {{ form.address.label(class="form-label") }}
+                    {{ form.address(class="form-control", rows=2) }}
+                </div>
+                <div class="mb-3">
+                    {{ form.warehouse_id.label(class="form-label") }}
+                    {{ form.warehouse_id(class="form-select") }}
+                    <small class="text-muted">Sección por defecto desde la que se despacha a este punto.</small>
+                </div>
+                <div class="mb-3 form-check">
+                    {{ form.active(class="form-check-input") }}
+                    {{ form.active.label(class="form-check-label") }}
+                </div>
+                <button type="submit" class="btn btn-success">{{ form.submit.label.text }}</button>
+                <a href="{{ url_with_token('admin.list_delivery_points') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

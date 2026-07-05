@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.delivery-detail { --delivery-radius: 12px; --delivery-muted: #6c757d; }
+.delivery-detail .card { border: none; border-radius: var(--delivery-radius); box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; }
+.delivery-detail .card-header { border: none; padding: 1rem 1.25rem; font-weight: 600; letter-spacing: 0.02em; }
+.delivery-detail .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem 1.5rem; }
+.delivery-detail .info-item { padding: 0.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.delivery-detail .info-item:last-child { border-bottom: none; }
+.delivery-detail .info-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--delivery-muted); margin-bottom: 0.15rem; }
+.delivery-detail .info-value { font-size: 0.95rem; font-weight: 500; color: #212529; }
+.delivery-detail .section-card { background: #f8f9fa; border-radius: var(--delivery-radius); border: 1px solid rgba(0,0,0,0.06); padding: 1rem 1.25rem; }
+.delivery-detail .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--delivery-muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+.delivery-detail .section-title i { opacity: 0.8; }
+.delivery-detail .table-modern { border-collapse: separate; border-spacing: 0; border-radius: 8px; overflow: hidden; background: #fff; }
+.delivery-detail .table-modern thead th { background: #e9ecef; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--delivery-muted); padding: 0.65rem 1rem; border: none; }
+.delivery-detail .table-modern tbody td { padding: 0.75rem 1rem; font-size: 0.9rem; border-top: 1px solid #eee; vertical-align: middle; }
+.delivery-detail .table-modern tbody tr:hover { background: rgba(25, 135, 84, 0.04); }
+.delivery-detail .table-modern tbody td:first-child { font-weight: 500; color: #212529; }
+.delivery-detail .table-modern tbody td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.delivery-detail .evidence-zone { border: 2px dashed #dee2e6; border-radius: 10px; padding: 1rem 1.25rem; background: #fff; transition: border-color .2s, background .2s; }
+.delivery-detail .evidence-zone:hover { border-color: #198754; background: rgba(25, 135, 84, 0.03); }
+.delivery-detail .evidence-zone .upload-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.delivery-detail .evidence-thumb { display: inline-block; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform .2s; }
+.delivery-detail .evidence-thumb:hover { transform: scale(1.02); }
+.delivery-detail .evidence-thumb img { display: block; height: 72px; width: auto; max-width: 110px; object-fit: cover; }
+.delivery-detail .evidence-file { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; background: #e9ecef; border-radius: 8px; font-size: 0.85rem; color: #495057; text-decoration: none; transition: background .2s; }
+.delivery-detail .evidence-file:hover { background: #dee2e6; color: #212529; }
+.delivery-detail .btn-actions .btn { border-radius: 8px; font-weight: 500; }
+.delivery-detail .btn-actions .btn i { margin-right: 0.35rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container delivery-detail mt-3 mb-4">
+    <div class="card">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-truck me-2"></i>Despacho {{ delivery.delivery_number }}</h5>
+            <span class="badge rounded-pill {% if delivery.status == 'confirmado' %}bg-white text-success{% elif delivery.status == 'anulado' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ delivery.status|capitalize }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="p-3 p-md-4">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Fecha</div>
+                        <div class="info-value">{{ delivery.date.strftime('%d/%m/%Y') if delivery.date else '—' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Bodega</div>
+                        <div class="info-value">{{ delivery.warehouse.name }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Punto de despacho</div>
+                        <div class="info-value">{{ delivery.delivery_point.name }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Hora entrega</div>
+                        <div class="info-value">{{ delivery.delivered_at.strftime('%d/%m/%Y %H:%M') if delivery.delivered_at else '—' }}</div>
+                    </div>
+                    {% if delivery.recipient_name or delivery.recipient_document_number %}
+                    <div class="info-item">
+                        <div class="info-label">Receptor</div>
+                        <div class="info-value">{{ delivery.recipient_name or '—' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Documento</div>
+                        <div class="info-value">{{ delivery.recipient_document_number or '—' }}{% if delivery.recipient_document_type %} <span class="text-muted fw-normal">({{ delivery.recipient_document_type|replace('cedula','Cédula')|replace('nit','NIT') }})</span>{% endif %}</div>
+                    </div>
+                    {% elif delivery.status == 'confirmado' %}
+                    <div class="info-item">
+                        <div class="info-label">Receptor</div>
+                        <div class="info-value text-muted fw-normal">Sin datos registrados</div>
+                    </div>
+                    {% endif %}
+                    {% if delivery.notes %}
+                    <div class="info-item" style="grid-column: 1 / -1;">
+                        <div class="info-label">Notas</div>
+                        <div class="info-value fw-normal">{{ delivery.notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if delivery.status == 'confirmado' and not delivery.recipient_name and not delivery.recipient_document_number %}
+                <div class="section-card mb-3 mt-3">
+                    <div class="section-title"><i class="fas fa-user-edit"></i> Completar datos del receptor</div>
+                    <p class="small text-muted mb-3">Si ya subió la foto del documento pero el OCR no guardó los datos, puede leer de nuevo el documento o escribirlos a mano y guardar.</p>
+                    <form method="post" action="{{ update_recipient_url }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="row g-2 mb-2">
+                            <div class="col-12">
+                                <label class="form-label small">Nombre del receptor</label>
+                                <input type="text" name="recipient_name" class="form-control form-control-sm" placeholder="Nombre de quien recibe" value="">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Número de documento</label>
+                                <input type="text" name="recipient_document_number" class="form-control form-control-sm" placeholder="Cédula o NIT">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Tipo</label>
+                                <select name="recipient_document_type" class="form-select form-select-sm">
+                                    <option value="">—</option>
+                                    <option value="cedula">Cédula</option>
+                                    <option value="nit">NIT</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <input type="file" id="detailOcrCarnetInput" accept="image/*" capture="environment" class="d-none">
+                            <button type="button" id="detailBtnOcrCarnet" class="btn btn-outline-primary btn-sm me-2"><i class="fas fa-camera me-1"></i> Leer documento con cámara</button>
+                            <span id="detailOcrStatus" class="small text-muted"></span>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save me-1"></i> Guardar receptor</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="px-3 px-md-4 pb-3 pb-md-4">
+                <div class="section-card mb-3">
+                    <div class="section-title"><i class="fas fa-box-open"></i> Ítems del despacho</div>
+                    {% if delivery.items %}
+                    <div class="table-responsive">
+                        <table class="table table-modern w-100 mb-0">
+                            <thead><tr><th>Producto</th><th class="text-end" style="width:6rem;">Cantidad</th></tr></thead>
+                            <tbody>
+                                {% for item in delivery.items %}
+                                <tr>
+                                    <td>{{ item.product.code }} — {{ item.product.name }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Sin ítems.</p>
+                    {% endif %}
+                </div>
+
+                <div class="section-card mb-3">
+                    <div class="section-title"><i class="fas fa-paperclip"></i> Evidencias</div>
+                    <div class="evidence-zone">
+                        <div class="upload-inner">
+                            {% for ev in delivery.evidence %}
+                            {% if ev.file_type and ev.file_type.startswith('image/') %}
+                            <a href="{{ url_for('delivery.serve_evidence', id=delivery.id, filename=ev.file_path.split('/')[-1]) }}" target="_blank" class="evidence-thumb">
+                                <img src="{{ url_for('delivery.serve_evidence', id=delivery.id, filename=ev.file_path.split('/')[-1]) }}" alt="Evidencia">
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('delivery.serve_evidence', id=delivery.id, filename=ev.file_path.split('/')[-1]) }}" target="_blank" class="evidence-file"><i class="fas fa-file-alt"></i> {{ ev.original_filename or 'Archivo' }}</a>
+                            {% endif %}
+                            {% endfor %}
+                            <form method="post" action="{{ url_with_token('delivery.upload_evidence', id=delivery.id) }}" enctype="multipart/form-data" class="d-flex align-items-center gap-2 flex-wrap">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <label class="mb-0 btn btn-outline-success btn-sm rounded-pill px-3 py-2 cursor-pointer">
+                                    <i class="fas fa-cloud-upload-alt me-1"></i> Elegir archivos
+                                    <input type="file" name="file" accept="image/*,application/pdf" multiple class="d-none">
+                                </label>
+                                <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 py-2"><i class="fas fa-upload me-1"></i> Subir</button>
+                            </form>
+                        </div>
+                        {% if not delivery.evidence %}
+                        <p class="text-muted small mb-0 mt-2">Imágenes o PDF. Arrastra o haz clic en «Elegir archivos».</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center btn-actions pt-2">
+                    <a href="{{ url_with_token('delivery.list_deliveries') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver</a>
+                    {% if delivery.status == 'borrador' %}
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ url_with_token('delivery.edit_delivery', id=delivery.id) }}" class="btn btn-outline-success"><i class="fas fa-edit"></i> Editar</a>
+                        <a href="{{ url_with_token('delivery.confirm_delivery', id=delivery.id) }}" class="btn btn-success"><i class="fas fa-check"></i> Confirmar entrega</a>
+                        <form method="post" action="{{ url_with_token('delivery.cancel_delivery', id=delivery.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-outline-danger"><i class="fas fa-times"></i> Anular</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var input = document.getElementById('detailOcrCarnetInput');
+    var btn = document.getElementById('detailBtnOcrCarnet');
+    var status = document.getElementById('detailOcrStatus');
+    if (!btn || !input) return;
+    var ocrUrl = "{{ url_with_token('delivery.ocr_carnet') }}";
+    var csrfToken = "{{ csrf_token }}";
+    btn.addEventListener('click', function() { input.click(); });
+    input.addEventListener('change', function() {
+        if (!input.files || !input.files[0]) return;
+        if (status) { status.textContent = 'Procesando...'; status.className = 'small text-muted'; }
+        var fd = new FormData();
+        fd.append('file', input.files[0]);
+        fd.append('csrf_token', csrfToken);
+        var req = new XMLHttpRequest();
+        req.open('POST', ocrUrl);
+        req.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        req.onload = function() {
+            input.value = '';
+            if (req.status === 200) {
+                try {
+                    var data = JSON.parse(req.responseText);
+                    var nameEl = document.querySelector('form[action*="update-recipient"] [name="recipient_name"]');
+                    var docEl = document.querySelector('form[action*="update-recipient"] [name="recipient_document_number"]');
+                    var typeEl = document.querySelector('form[action*="update-recipient"] [name="recipient_document_type"]');
+                    if (nameEl && data.recipient_name !== undefined) nameEl.value = data.recipient_name || '';
+                    if (docEl && data.recipient_document_number !== undefined) docEl.value = data.recipient_document_number || '';
+                    if (typeEl && data.document_type !== undefined) typeEl.value = data.document_type || '';
+                    if (status) {
+                        if ((data.recipient_name && data.recipient_name.length) || (data.recipient_document_number && data.recipient_document_number.length)) {
+                            status.textContent = 'Datos rellenados. Pulse Guardar receptor.';
+                            status.className = 'small text-success';
+                        } else if (data.error) {
+                            status.textContent = data.error;
+                            status.className = 'small text-danger';
+                        } else {
+                            status.textContent = 'No se detectaron datos. Puede escribirlos a mano.';
+                            status.className = 'small text-warning';
+                        }
+                    }
+                } catch (e) {
+                    if (status) { status.textContent = 'Error al leer la respuesta.'; status.className = 'small text-danger'; }
+                }
+            } else {
+                try {
+                    var err = JSON.parse(req.responseText);
+                    if (status) status.textContent = err.error || 'Error en el servidor';
+                } catch (e) {
+                    if (status) status.textContent = 'Error ' + req.status;
+                }
+                if (status) status.className = 'small text-danger';
+            }
+        };
+        req.onerror = function() {
+            input.value = '';
+            if (status) { status.textContent = 'Error de conexión.'; status.className = 'small text-danger'; }
+        };
+        req.send(fd);
+    });
+})();
+</script>
+{% endblock %}

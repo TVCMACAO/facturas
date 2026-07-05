@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container module-list mt-3 mb-4">
+    <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="page-title"><i class="fas fa-truck-loading"></i> Puntos de despacho</h1>
+            <p class="page-subtitle">Almacenes de entrega para despachos desde el centro de acopio.</p>
+        </div>
+        <a href="{{ url_with_token('admin.create_delivery_point') }}" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-plus me-1"></i> Nuevo punto</a>
+    </div>
+    {% set filter_action = url_with_token('admin.list_delivery_points') %}
+    {% set filter_date_from = '' %}
+    {% set filter_date_to = '' %}
+    {% set filter_show_dates = false %}
+    {% set filter_status_options = filter_status_options|default([]) %}
+    {% set filter_show_status = true %}
+    {% set filter_status = filter_status|default('') %}
+    <form method="get" action="{{ filter_action }}" class="list-filters-card">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-0">Buscar</label>
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Nombre o código..." value="{{ filter_q|default('', true) }}" style="min-width:160px;">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Estado</label>
+                <select name="status" class="form-select form-select-sm" style="min-width:110px;">
+                    {% for val, label in filter_status_options %}
+                    <option value="{{ val }}" {% if filter_status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search me-1"></i> Filtrar</button>
+                <a href="{{ filter_action }}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+            </div>
+        </div>
+    </form>
+    <div class="card">
+        <div class="card-body p-0">
+            {% if delivery_points %}
+            <div class="table-responsive">
+                <table class="table table-modern table-hover table-sm">
+                    <thead><tr><th>Código</th><th>Nombre</th><th>Dirección</th><th>Sección</th><th>Estado</th><th class="text-end" style="width:100px;">Acciones</th></tr></thead>
+                    <tbody>
+                        {% for dp in delivery_points %}
+                        <tr>
+                            <td class="text-nowrap">{{ dp.code or '—' }}</td>
+                            <td>{{ dp.name }}</td>
+                            <td class="text-muted small text-truncate" style="max-width:200px;" title="{{ dp.address or '' }}">{{ dp.address or '—' }}</td>
+                            <td class="small">{{ dp.warehouse.name if dp.warehouse else '—' }}</td>
+                            <td><span class="badge rounded-pill {% if dp.active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Activo' if dp.active else 'Inactivo' }}</span></td>
+                            <td class="text-end"><a href="{{ url_with_token('admin.edit_delivery_point', id=dp.id) }}" class="btn btn-sm btn-outline-success"><i class="fas fa-edit me-1"></i> Editar</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-module">
+                <i class="fas fa-truck-loading d-block"></i>
+                <p class="mb-2">No hay puntos de despacho{% if filter_q or filter_status %} con esos filtros{% endif %}.</p>
+                <a href="{{ url_with_token('admin.create_delivery_point') }}" class="btn btn-success btn-sm"><i class="fas fa-plus me-1"></i> Nuevo punto</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

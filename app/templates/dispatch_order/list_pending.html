@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container module-list mt-3 mb-4">
+    <div class="page-header">
+        <h1 class="page-title"><i class="fas fa-clipboard-list"></i> Pedidos pendientes</h1>
+        <p class="page-subtitle mb-0">Solicitudes de productos desde puntos de despacho al centro de acopio.</p>
+    </div>
+    {% set filter_action = url_with_token('dispatch_order.list_pending') %}
+    {% include '_list_filters.html' with context %}
+    <div class="card">
+        <div class="card-body p-0">
+            {% if orders %}
+            <div class="table-responsive">
+                <table class="table table-modern table-hover table-sm">
+                    <thead><tr><th>Número</th><th>Fecha</th><th>Punto</th><th>Solicitado por</th><th>Estado</th><th class="text-end" style="min-width:11rem;">Acciones</th></tr></thead>
+                    <tbody>
+                        {% for o in orders %}
+                        <tr>
+                            <td>{{ o.order_number }}</td>
+                            <td>{{ o.created_at.strftime('%d/%m/%Y %H:%M') if o.created_at else '—' }}</td>
+                            <td>{{ o.delivery_point.name if o.delivery_point else '—' }}</td>
+                            <td>{{ o.requested_by.name if o.requested_by else '—' }}</td>
+                            <td><span class="badge rounded-pill {% if o.status == 'en_preparacion' %}bg-info{% else %}bg-warning text-dark{% endif %}">{{ o.status|replace('_', ' ')|capitalize }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_with_token('dispatch_order.order_detail', id=o.id) }}" class="btn btn-sm btn-outline-primary me-1">Ver</a>
+                                {% if not o.delivery_id %}
+                                <form method="post" action="{{ url_with_token('dispatch_order.create_delivery_from_order', id=o.id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-truck me-1"></i> Crear despacho</button>
+                                </form>
+                                {% else %}
+                                <a href="{{ url_with_token('delivery.edit_delivery', id=o.delivery_id) }}" class="btn btn-sm btn-outline-success">Ir al despacho</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-module"><i class="fas fa-clipboard-list d-block"></i><p class="mb-0">No hay pedidos pendientes.</p></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

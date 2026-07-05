@@ -175,21 +175,21 @@
     <div class="totals">
         <table>
             <tr>
-                <td class="label">SUBTOTAL:</td>
-                <td class="amount">{{ invoice.total_amount|currency_format }}</td>
+                <td class="label">Subtotal (ítems):</td>
+                <td class="amount">{{ invoice.subtotal|currency_format }}</td>
             </tr>
+            {% if invoice.discount_type and invoice.discount_type != 'none' and invoice.discount_amount and invoice.discount_amount > 0 %}
             <tr>
                 <td class="label">Descuento:</td>
-                <td class="amount">{{ 0|currency_format }}</td>
+                <td class="amount">-{{ invoice.discount_amount|currency_format }}</td>
             </tr>
+            {% endif %}
+            {% if invoice.tax_rate is not none and invoice.tax_rate|float > 0 %}
             <tr>
-                <td class="label">SUBTOTAL (Neto):</td>
-                <td class="amount">{{ invoice.total_amount|currency_format }}</td>
+                <td class="label">IVA ({{ invoice.tax_rate|int }}%):</td>
+                <td class="amount">{{ invoice.tax_amount|currency_format }}</td>
             </tr>
-            <tr>
-                <td class="label">IVA (0%):</td>
-                <td class="amount">{{ 0|currency_format }}</td>
-            </tr>
+            {% endif %}
             <tr class="grand-total">
                 <td class="label">TOTAL:</td>
                 <td class="amount">{{ invoice.total_amount|currency_format }}</td>

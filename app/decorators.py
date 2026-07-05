@@ -20,6 +20,19 @@ def role_required(allowed_roles):
         return decorated_function
     return decorator
 
+def super_admin_required(f):
+    """Decorador que requiere que el usuario sea super_admin"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Por favor, inicia sesión para acceder a esta página.', 'warning')
+            return redirect(url_for('main.login'))
+        if current_user.role != 'super_admin':
+            flash('Solo los Super Administradores pueden acceder a esta página.', 'danger')
+            abort(403) # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
+
 def log_audit(action, entity_type, entity_id, changes=None, user=None):
     """
     Registra una acción en el log de auditoría.

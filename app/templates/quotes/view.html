@@ -53,7 +53,8 @@
                                                 title="Editar ítem">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <form action="{{ url_for('quotes.delete_quote_item', quote_id=quote.id, item_id=item.id) }}" method="post" style="display:inline;">
+                                        <form action="{{ url_with_token('quotes.delete_quote_item', quote_id=quote.id, item_id=item.id) }}" method="post" style="display:inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                             <button type="submit" 
                                                     class="btn btn-outline-danger btn-sm" 
                                                     title="Quitar ítem"
@@ -133,8 +134,14 @@
                         <div class="accordion-body">
                             <h5>{{ quote.client.name }}</h5>
                             <p class="mb-1"><strong>Cotización #:</strong> {{ quote.quote_number }}</p>
-                            <p class="mb-1"><strong>Fecha:</strong> {{ quote.date.strftime('%d-%m-%Y') }}</p>
-                            <p><strong>Monto Total:</strong> <span class="h5">{{ quote.total_amount|currency_format }}</span></p>
+                            <p class="mb-1"><strong>Fecha:</strong> {{ quote.date.strftime('%d/%m/%Y') }}</p>
+                            <hr>
+                            <p class="mb-1"><strong>Subtotal (ítems):</strong> {{ quote.subtotal|currency_format }}</p>
+                            {% if quote.discount_type and quote.discount_type != 'none' and quote.discount_amount and quote.discount_amount > 0 %}
+                            <p class="mb-1"><strong>Descuento:</strong> -{{ quote.discount_amount|currency_format }}</p>
+                            {% endif %}
+                            {# Sin IVA: no se muestra línea de IVA; Monto Total = valor neto (subtotal - descuento) #}
+                            <p class="mb-0"><strong>Monto Total:</strong> <span class="h5">{{ (quote.subtotal - (quote.discount_amount or 0))|currency_format }}</span></p>
                             <hr>
                             <p class="mb-1">
                                 <strong>Estado:</strong>
@@ -165,9 +172,13 @@
                                 <a href="{{ url_for('quotes.generate_quote_pdf', id=quote.id, token=view_token) }}" class="btn btn-danger"><i class="fas fa-file-pdf me-2"></i>Generar PDF</a>
                                 <a href="{{ url_for('quotes.send_quote_email', id=quote.id, token=view_token) }}" class="btn btn-info"><i class="fas fa-envelope me-2"></i>Enviar por Email</a>
                                 <form action="{{ url_for('quotes.send_quote_whatsapp', id=quote.id, token=view_token) }}" method="POST" class="d-grid">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                     <button type="submit" class="btn btn-success"><i class="fab fa-whatsapp me-2"></i>Enviar por WhatsApp</button>
                                 </form>
-                                <a href="{{ url_for('quotes.convert_to_invoice', id=quote.id, token=view_token) }}" class="btn btn-primary {% if quote.status == 'facturada' %}disabled{% endif %}"><i class="fas fa-exchange-alt me-2"></i>Convertir a Factura</a>
+                                <form action="{{ url_for('quotes.convert_to_invoice', id=quote.id, token=view_token) }}" method="POST" class="d-grid">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn btn-primary" {% if quote.status == 'facturada' %}disabled{% endif %}><i class="fas fa-exchange-alt me-2"></i>Convertir a Factura</button>
+                                </form>
                             </div>
                         </div>
                     </div>

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Elegir empresa{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 50%, #17a2b8 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+        position: relative;
+    }
+    .login-container {
+        min-height: calc(100vh - 76px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        padding: 3rem;
+        max-width: 450px;
+        width: 100%;
+    }
+    .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .login-header h1 {
+        color: #1a202c;
+        font-weight: 800;
+        font-size: 1.75rem;
+    }
+    .company-option {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .company-option:hover {
+        border-color: #28a745;
+        background: rgba(40, 167, 69, 0.05);
+    }
+    .company-option input {
+        margin-right: 0.75rem;
+    }
+    .btn-continue {
+        width: 100%;
+        padding: 0.875rem;
+        margin-top: 1rem;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        color: white;
+    }
+    .btn-continue:hover {
+        background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+        color: white;
+    }
+    .btn-back {
+        margin-top: 1rem;
+        color: #28a745;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .btn-back:hover {
+        color: #20c997;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h1><i class="fas fa-building me-2"></i>Elegir empresa</h1>
+            <p class="text-muted mb-0">Tu usuario existe en varias empresas. Selecciona con cuál quieres entrar.</p>
+        </div>
+        <form method="post" action="{{ url_for('main.select_company') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            {% for c in candidates %}
+            <label class="company-option">
+                <input type="radio" name="company_id" value="{{ c.company_id }}" required>
+                <strong>{{ c.company_name }}</strong>
+            </label>
+            {% endfor %}
+            <button type="submit" class="btn btn-continue">
+                <i class="fas fa-sign-in-alt me-2"></i>Continuar
+            </button>
+        </form>
+        <div class="text-center mt-3">
+            <a href="{{ url_for('main.index') }}" class="btn-back"><i class="fas fa-arrow-left me-1"></i>Volver al inicio de sesión</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

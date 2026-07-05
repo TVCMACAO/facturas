@@ -5,6 +5,8 @@ from app import db, mail
 from flask_mail import Message
 from app.models import Invoice, Client, Product, InvoiceItem, Payment, InventoryMovement
 from app.forms import InvoiceForm, InvoiceItemForm, InvoiceFinancialUpdateForm
+from app.numbering import next_invoice_number
+from app.tenant import filter_by_company, ensure_company_id, get_company_default_tax_rate
 import datetime
 import weasyprint
 import io
@@ -63,17 +65,13 @@ def calculate_invoice_totals(invoice):
     elif invoice.discount_type == 'amount':
         discount_amount = min(invoice.discount_value, subtotal)  # No puede ser mayor que el subtotal
     
-    # Monto después del descuento (base para impuestos)
+    # Monto después del descuento = valor neto (no se suma IVA en esta plataforma)
     amount_after_discount = subtotal - discount_amount
-    
-    # Obtener tax_rate (usar el de la factura o el por defecto)
-    tax_rate = invoice.tax_rate if invoice.tax_rate is not None else Config.DEFAULT_TAX_RATE
-    
-    # Calcular tax_amount sobre el monto después del descuento
-    tax_amount = amount_after_discount * (tax_rate / 100.0)
-    
-    # Calcular total_amount
-    total_amount = amount_after_discount + tax_amount
+
+    # Sin IVA: total = valor neto (subtotal - descuento)
+    tax_rate = 0.0
+    tax_amount = 0.0
+    total_amount = amount_after_discount
     
     # Actualizar la factura
     invoice.subtotal = subtotal
@@ -87,57 +85,50 @@ def calculate_invoice_totals(invoice):
 @invoices_bp.route('/')
 @login_required
 def list_invoices():
-    # Get search parameters from request.args
-    start_date_str = request.args.get('start_date')
-    end_date_str = request.args.get('end_date')
-    search = request.args.get('search')  # Unified search field
-    status = request.args.get('status')
+    q = (request.args.get('q') or request.args.get('search') or '').strip()
+    date_from = (request.args.get('date_from') or request.args.get('start_date') or '').strip()
+    date_to = (request.args.get('date_to') or request.args.get('end_date') or '').strip()
+    status = (request.args.get('status') or '').strip()
+    if status == 'all':
+        status = ''
 
-    query = Invoice.query.join(Client)
+    base_query = filter_by_company(Invoice.query, Invoice)
+    query = base_query.join(Client)
     filters = []
-
-    # Unified search: search in invoice number, client name, and client document number
-    if search:
-        search_filter = or_(
-            Invoice.invoice_number.ilike(f'%{search}%'),
-            Client.name.ilike(f'%{search}%'),
-            Client.document_number.ilike(f'%{search}%')
-        )
-        filters.append(search_filter)
-
-    # Filter by date range
-    if start_date_str:
+    if q:
+        filters.append(or_(
+            Invoice.invoice_number.ilike(f'%{q}%'),
+            Client.name.ilike(f'%{q}%'),
+            Client.document_number.ilike(f'%{q}%')
+        ))
+    if date_from:
         try:
-            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            filters.append(Invoice.date >= start_date)
+            d = datetime.datetime.strptime(date_from, '%Y-%m-%d').date()
+            filters.append(Invoice.date >= datetime.datetime.combine(d, datetime.datetime.min.time()))
         except ValueError:
-            flash('Formato de fecha de inicio inválido. Use YYYY-MM-DD.', 'danger')
-    if end_date_str:
+            pass
+    if date_to:
         try:
-            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            filters.append(Invoice.date <= end_date)
+            d = datetime.datetime.strptime(date_to, '%Y-%m-%d').date()
+            filters.append(Invoice.date <= datetime.datetime.combine(d, datetime.datetime.max.time()))
         except ValueError:
-            flash('Formato de fecha de fin inválido. Use YYYY-MM-DD.', 'danger')
-
-    # Filter by status
-    if status and status != 'all': # Assuming 'all' means no status filter
+            pass
+    if status:
         filters.append(Invoice.status == status)
-
-    # Apply all filters
     if filters:
-        query = query.filter(and_(*filters)) # Use and_ to combine all filters
-
+        query = query.filter(and_(*filters))
     invoices = query.order_by(Invoice.date.desc()).all()
 
-    # Pass all search parameters back to the template
     return render_template(
         'invoices/list.html',
         invoices=invoices,
         title='Facturas',
-        start_date=start_date_str,
-        end_date=end_date_str,
-        search=search,
-        status=status
+        filter_q=q,
+        filter_date_from=date_from,
+        filter_date_to=date_to,
+        filter_status=status,
+        filter_show_status=True,
+        filter_status_options=[('', 'Todos'), ('borrador', 'Borrador'), ('no_pagada', 'No pagada'), ('parcial', 'Pago parcial'), ('pagada', 'Pagada'), ('vencida', 'Vencida'), ('anulada', 'Anulada')],
     )
 
 @invoices_bp.route('/search', methods=['GET'])
@@ -149,7 +140,8 @@ def search_invoices():
     if not q:
         return jsonify(invoices=[])
     
-    query = Invoice.query.join(Client)
+    base_query = filter_by_company(Invoice.query, Invoice)
+    query = base_query.join(Client)
     
     # Buscar en número de factura, nombre del cliente y documento del cliente
     search_filter = or_(
@@ -179,33 +171,27 @@ def search_invoices():
 @login_required
 def add_invoice():
     form = InvoiceForm()
-    form.client_id.choices = [(c.id, c.name) for c in Client.query.order_by('name').all()]
+    client_query = filter_by_company(Client.query, Client)
+    form.client_id.choices = [(c.id, c.name) for c in client_query.order_by('name').all()]
 
-    # Generate next invoice number (similar to quote)
-    last_invoice = Invoice.query.order_by(Invoice.id.desc()).first()
-    if last_invoice and last_invoice.invoice_number.isdigit():
-        next_number = int(last_invoice.invoice_number) + 1
-    else:
-        next_number = 1
-    
-    if next_number < 118:
-        next_number = 118
-
-    generated_invoice_number = str(next_number).zfill(4)
+    # Generate next invoice number (único por empresa)
+    generated_invoice_number = next_invoice_number(current_user.company_id)
 
     if form.validate_on_submit():
-        # Obtener tax_rate del formulario o usar el por defecto
-        tax_rate = form.tax_rate.data if form.tax_rate.data is not None else Config.DEFAULT_TAX_RATE
+        # Usar IVA de la empresa (configuración)
+        tax_rate = form.tax_rate.data if form.tax_rate.data is not None else get_company_default_tax_rate(current_user.company_id)
         
         # Obtener descuento del formulario
         discount_type = form.discount_type.data if form.discount_type.data else 'none'
         discount_value = form.discount_value.data if form.discount_value.data else 0.0
         
+        today_inv = datetime.date.today()
         new_invoice = Invoice(
             client_id=form.client_id.data,
             invoice_number=generated_invoice_number,
-            date=form.date.data,
-            due_date=form.date.data + datetime.timedelta(days=30), # Calculate due_date
+            date=today_inv,
+            due_date=today_inv + datetime.timedelta(days=30),
+            company_id=current_user.company_id,
             subtotal=0.0,
             discount_type=discount_type,
             discount_value=discount_value,
@@ -217,11 +203,12 @@ def add_invoice():
         db.session.add(new_invoice)
         db.session.commit()
         flash('Cabecera de la factura creada con éxito. Ahora puede añadir productos.', 'success')
-        return redirect(url_for('invoices.view_invoice', id=new_invoice.id))
+        token = generate_view_token(new_invoice.id, 'invoice')
+        return redirect(url_for('invoices.view_invoice', id=new_invoice.id, token=token))
     
     if not form.is_submitted():
         form.date.data = datetime.date.today()
-        form.tax_rate.data = Config.DEFAULT_TAX_RATE
+        form.tax_rate.data = get_company_default_tax_rate(current_user.company_id)
         form.discount_type.data = 'none'
         form.discount_value.data = 0.0
 
@@ -251,7 +238,7 @@ def view_invoice(id, token=None):
         from flask import abort
         abort(404)
     
-    invoice = Invoice.query.get_or_404(id)
+    invoice = ensure_company_id(id, Invoice)
     # Generar token para usar en enlaces internos
     view_token = generate_view_token(id, 'invoice')
     item_form = InvoiceItemForm()
@@ -260,7 +247,7 @@ def view_invoice(id, token=None):
     # Distinguish between form submissions
     if request.method == 'POST':
         if 'add_item' in request.form and item_form.validate():
-            product = Product.query.get(item_form.product_id.data)
+            product = ensure_company_id(item_form.product_id.data, Product)
             
             # Calcular stock disponible considerando items ya agregados en esta factura
             available_stock = product.stock
@@ -317,7 +304,7 @@ def view_invoice(id, token=None):
                 new_payment = Payment(
                     invoice_id=invoice.id,
                     amount=financial_form.amount.data,
-                    payment_date=financial_form.payment_date.data,
+                    payment_date=datetime.date.today(),
                     method=financial_form.method.data
                 )
                 db.session.add(new_payment)
@@ -345,7 +332,8 @@ def view_invoice(id, token=None):
             
             db.session.commit()
             flash('Estado de la factura actualizado.', 'success')
-            return redirect(url_for('invoices.view_invoice', id=invoice.id))
+            token = generate_view_token(invoice.id, 'invoice')
+            return redirect(url_for('invoices.view_invoice', id=invoice.id, token=token))
 
 
     # Pre-fill forms for GET request
@@ -355,9 +343,13 @@ def view_invoice(id, token=None):
         # Use invoice's payment_date if available, otherwise today's date
         financial_form.payment_date.data = invoice.payment_date if invoice.payment_date else datetime.date.today()
 
+    # Recalcular totales antes de mostrar (sin IVA: total = valor neto)
+    calculate_invoice_totals(invoice)
+    db.session.commit()
+
     # Conditionally populate choices for product_id for item_form
     if item_form.product_id.data:
-        product = Product.query.get(item_form.product_id.data)
+        product = ensure_company_id(item_form.product_id.data, Product)
         if product:
             item_form.product_id.choices = [(product.id, f"{product.code} - {product.name}")]
     else:
@@ -368,7 +360,9 @@ def view_invoice(id, token=None):
 @invoices_bp.route('/<int:id>/pdf')
 @login_required
 def generate_invoice_pdf(id):
-    invoice = Invoice.query.get_or_404(id)
+    invoice = ensure_company_id(id, Invoice)
+    calculate_invoice_totals(invoice)
+    db.session.commit()
     logo_disk_path = Path(os.path.join(current_app.root_path, 'img', '1.png'))
     logo_path = urllib.parse.urljoin('file:', urllib.request.pathname2url(str(logo_disk_path))) if logo_disk_path.exists() else None
 
@@ -393,7 +387,7 @@ def generate_invoice_pdf(id):
 @invoices_bp.route('/<int:id>/send_email', methods=['GET', 'POST'])
 @login_required
 def send_invoice_email(id):
-    invoice = Invoice.query.get_or_404(id)
+    invoice = ensure_company_id(id, Invoice)
     recipient_email = invoice.client.email
 
     if request.method == 'POST':
@@ -421,17 +415,19 @@ Su Empresa''',
             flash('Correo enviado con éxito.', 'success')
         except Exception as e:
             flash(f'Error al enviar el correo: {e}', 'danger')
-        return redirect(url_for('invoices.view_invoice', id=invoice.id))
+        token = generate_view_token(invoice.id, 'invoice')
+        return redirect(url_for('invoices.view_invoice', id=invoice.id, token=token))
 
     return render_template('invoices/send_email_confirm.html', invoice=invoice, recipient_email=recipient_email, title=f'Enviar Factura #{invoice.invoice_number} por Email')
 
 @invoices_bp.route('/<int:id>/send_whatsapp', methods=['POST'])
 @login_required
 def send_invoice_whatsapp(id):
-    invoice = Invoice.query.get_or_404(id)
+    invoice = ensure_company_id(id, Invoice)
     if not invoice.client.whatsapp_number:
         flash('El cliente no tiene un número de WhatsApp registrado.', 'danger')
-        return redirect(url_for('invoices.view_invoice', id=id))
+        token = generate_view_token(id, 'invoice')
+        return redirect(url_for('invoices.view_invoice', id=id, token=token))
 
     # 1. Generate and save the PDF to get the filename
     filename = f'fev_{invoice.invoice_number}_{datetime.date.today().strftime("%d%m%Y")}.pdf'
@@ -455,4 +451,5 @@ def send_invoice_whatsapp(id):
     else:
         flash(f"Error al enviar por WhatsApp: {response.get('error', {}).get('message', 'Error desconocido')}", 'danger')
 
-    return redirect(url_for('invoices.view_invoice', id=id))
+    token = generate_view_token(id, 'invoice')
+    return redirect(url_for('invoices.view_invoice', id=id, token=token))

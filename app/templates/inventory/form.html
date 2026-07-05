@@ -188,13 +188,14 @@
         <div class="stock-info">
             <p>
                 <i class="fas fa-info-circle"></i>
-                <span>Stock actual: <strong>{{ product.stock }}</strong> unidades</span>
+                <span>Stock actual{% if warehouse %} en {{ warehouse.name }}{% endif %}: <strong>{{ current_warehouse_stock }}</strong> unidades</span>
             </p>
         </div>
         {% endif %}
         
         <form action="" method="post" novalidate>
             {{ form.hidden_tag() }}
+            {% if warehouse %}<input type="hidden" name="warehouse_id" value="{{ warehouse.id }}">{% endif %}
             
             <div class="form-group-modern">
                 <label class="form-label">
@@ -231,7 +232,7 @@
         </form>
         
         <div class="btn-back">
-            <a href="{{ url_for('inventory.list_inventory') }}">
+            <a href="{{ url_with_token('inventory.list_inventory') }}{% if warehouse %}&warehouse_id={{ warehouse.id }}{% endif %}">
                 <i class="fas fa-arrow-left"></i>
                 Volver al Inventario
             </a>

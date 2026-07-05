@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container module-list mt-3 mb-4">
+    <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="page-title"><i class="fas fa-truck-loading"></i> Recepciones</h1>
+            <p class="page-subtitle mb-0">Recepción en centro de acopio. Clasifique cada ítem en Almacén General o Farmacia.</p>
+        </div>
+        <a href="{{ url_with_token('reception.create_reception') }}" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-plus me-1"></i> Nueva Recepción</a>
+    </div>
+    {% set filter_action = url_with_token('reception.list_receptions') %}
+    {% include '_list_filters.html' with context %}
+    <div class="card">
+        <div class="card-body p-0">
+            {% if receptions %}
+            <div class="table-responsive">
+                <table class="table table-modern table-hover table-sm">
+                    <thead><tr><th>Número</th><th>Fecha</th><th>Guía</th><th>Recibido por</th><th>Estado</th><th class="text-end" style="width:120px;">Acciones</th></tr></thead>
+                    <tbody>
+                        {% for r in receptions %}
+                        <tr>
+                            <td>{{ r.reception_number }}</td>
+                            <td>{{ r.date.strftime('%d/%m/%Y') if r.date else '—' }}</td>
+                            <td>{{ r.guide_number or '—' }}</td>
+                            <td>{{ r.received_by.name if r.received_by else '—' }}</td>
+                            <td><span class="badge rounded-pill {% if r.status == 'confirmado' %}bg-success{% elif r.status == 'anulado' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ r.status|capitalize }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_with_token('reception.view_reception', id=r.id) }}" class="btn btn-sm btn-outline-primary">Ver</a>
+                                {% if r.status == 'borrador' %}<a href="{{ url_with_token('reception.edit_reception', id=r.id) }}" class="btn btn-sm btn-outline-success ms-1">Editar</a>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-module"><i class="fas fa-truck-loading d-block"></i><p class="mb-2">No hay recepciones.</p><a href="{{ url_with_token('reception.create_reception') }}" class="btn btn-success btn-sm"><i class="fas fa-plus me-1"></i> Crear una</a></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

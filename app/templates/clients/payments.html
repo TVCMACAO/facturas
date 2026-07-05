@@ -361,7 +361,7 @@
                     <tr>
                         <td>
                             <i class="fas fa-calendar-alt" style="color: #6c757d; margin-right: 0.5rem;"></i>
-                            {{ payment.payment_date.strftime('%d-%m-%Y') }}
+                            {{ payment.payment_date.strftime('%d/%m/%Y') }}
                         </td>
                         <td class="amount-cell">{{ payment.amount|currency_format }}</td>
                         <td>

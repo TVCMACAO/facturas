@@ -4,6 +4,10 @@ from flask_login import login_required, current_user
 from app import db, mail # Import mail
 from app.models import Quote, Client, Product, QuoteItem, Invoice, InvoiceItem, InventoryMovement # Import Invoice and InvoiceItem
 from app.forms import QuoteForm, QuoteItemForm, UpdateQuoteStatusForm, QuoteItemEditForm # Import QuoteItemEditForm
+from app.tenant import filter_by_company, ensure_company_id, get_company_default_tax_rate
+from app.decorators import role_required, log_audit
+from app.numbering import next_invoice_number
+from sqlalchemy.exc import IntegrityError
 from flask_mail import Message # Import Message
 import datetime
 import weasyprint
@@ -68,18 +72,14 @@ def calculate_quote_totals(quote):
     elif quote.discount_type == 'amount':
         discount_amount = min(quote.discount_value, subtotal)  # No puede ser mayor que el subtotal
     
-    # Monto después del descuento (base para impuestos)
+    # Monto después del descuento = valor neto (no se suma IVA en esta plataforma)
     amount_after_discount = subtotal - discount_amount
     
-    # Obtener tax_rate (usar el de la cotización o el por defecto)
-    tax_rate = quote.tax_rate if quote.tax_rate is not None else Config.DEFAULT_TAX_RATE
-    
-    # Calcular tax_amount sobre el monto después del descuento
-    tax_amount = amount_after_discount * (tax_rate / 100.0)
-    
-    # Calcular total_amount
-    total_amount = amount_after_discount + tax_amount
-    
+    # Sin IVA: total = valor neto (subtotal - descuento)
+    tax_rate = 0.0
+    tax_amount = 0.0
+    total_amount = amount_after_discount
+
     # Actualizar la cotización
     quote.subtotal = subtotal
     quote.discount_amount = discount_amount
@@ -92,57 +92,53 @@ def calculate_quote_totals(quote):
 @quotes_bp.route('/')
 @login_required
 def list_quotes():
-    # Get search parameters from request.args
-    start_date_str = request.args.get('start_date')
-    end_date_str = request.args.get('end_date')
-    search = request.args.get('search')  # Unified search field
-    status = request.args.get('status')
+    # Parámetros estándar: q, date_from, date_to, status (también acepta search, start_date, end_date)
+    q = (request.args.get('q') or request.args.get('search') or '').strip()
+    date_from = (request.args.get('date_from') or request.args.get('start_date') or '').strip()
+    date_to = (request.args.get('date_to') or request.args.get('end_date') or '').strip()
+    status = (request.args.get('status') or '').strip()
+    if status == 'all':
+        status = ''
 
-    query = Quote.query.join(Client)
+    base_query = filter_by_company(Quote.query, Quote)
+    query = base_query.join(Client)
     filters = []
 
-    # Unified search: search in quote number, client name, and client document number
-    if search:
-        search_filter = or_(
-            Quote.quote_number.ilike(f'%{search}%'),
-            Client.name.ilike(f'%{search}%'),
-            Client.document_number.ilike(f'%{search}%')
-        )
-        filters.append(search_filter)
-
-    # Filter by date range
-    if start_date_str:
+    if q:
+        filters.append(or_(
+            Quote.quote_number.ilike(f'%{q}%'),
+            Client.name.ilike(f'%{q}%'),
+            Client.document_number.ilike(f'%{q}%')
+        ))
+    if date_from:
         try:
-            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            filters.append(Quote.date >= start_date)
+            d = datetime.datetime.strptime(date_from, '%Y-%m-%d').date()
+            filters.append(Quote.date >= datetime.datetime.combine(d, datetime.datetime.min.time()))
         except ValueError:
-            flash('Formato de fecha de inicio inválido. Use YYYY-MM-DD.', 'danger')
-    if end_date_str:
+            pass
+    if date_to:
         try:
-            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            filters.append(Quote.date <= end_date)
+            d = datetime.datetime.strptime(date_to, '%Y-%m-%d').date()
+            filters.append(Quote.date <= datetime.datetime.combine(d, datetime.datetime.max.time()))
         except ValueError:
-            flash('Formato de fecha de fin inválido. Use YYYY-MM-DD.', 'danger')
-
-    # Filter by status
-    if status and status != 'all': # Assuming 'all' means no status filter
+            pass
+    if status:
         filters.append(Quote.status == status)
 
-    # Apply all filters
     if filters:
-        query = query.filter(and_(*filters)) # Use and_ to combine all filters
-
+        query = query.filter(and_(*filters))
     quotes = query.order_by(Quote.date.desc()).all()
 
-    # Pass all search parameters back to the template
     return render_template(
         'quotes/list.html',
         quotes=quotes,
         title='Cotizaciones',
-        start_date=start_date_str,
-        end_date=end_date_str,
-        search=search,
-        status=status
+        filter_q=q,
+        filter_date_from=date_from,
+        filter_date_to=date_to,
+        filter_status=status,
+        filter_show_status=True,
+        filter_status_options=[('', 'Todos'), ('pendiente', 'Pendiente'), ('aceptada', 'Aceptada'), ('rechazada', 'Rechazada'), ('vencida', 'Vencida'), ('facturada', 'Facturada')],
     )
 
 @quotes_bp.route('/search', methods=['GET'])
@@ -154,7 +150,8 @@ def search_quotes():
     if not q:
         return jsonify(quotes=[])
     
-    query = Quote.query.join(Client)
+    base_query = filter_by_company(Quote.query, Quote)
+    query = base_query.join(Client)
     
     # Buscar en número de cotización, nombre del cliente y documento del cliente
     search_filter = or_(
@@ -185,11 +182,13 @@ def search_quotes():
 @login_required
 def add_quote():
     form = QuoteForm()
-    # Populate client choices
-    form.client_id.choices = [(c.id, c.name) for c in Client.query.order_by('name').all()]
+    # Populate client choices (filtrados por empresa)
+    client_query = filter_by_company(Client.query, Client)
+    form.client_id.choices = [(c.id, c.name) for c in client_query.order_by('name').all()]
     
-    # Generate next quote number
-    last_quote = Quote.query.order_by(Quote.id.desc()).first()
+    # Generate next quote number (único por empresa)
+    base_quote_query = filter_by_company(Quote.query, Quote)
+    last_quote = base_quote_query.order_by(Quote.id.desc()).first()
     if last_quote and last_quote.quote_number.isdigit(): # Check if it's purely numeric
         next_number = int(last_quote.quote_number) + 1
     else:
@@ -202,8 +201,8 @@ def add_quote():
     generated_quote_number = str(next_number).zfill(4) # Format as 0001, 0002 etc.
 
     if form.validate_on_submit():
-        # Obtener tax_rate del formulario o usar el por defecto
-        tax_rate = form.tax_rate.data if form.tax_rate.data is not None else Config.DEFAULT_TAX_RATE
+        # Usar IVA de la empresa (configuración)
+        tax_rate = form.tax_rate.data if form.tax_rate.data is not None else get_company_default_tax_rate(current_user.company_id)
         
         # Obtener descuento del formulario
         discount_type = form.discount_type.data if form.discount_type.data else 'none'
@@ -213,7 +212,8 @@ def add_quote():
         new_quote = Quote(
             client_id=form.client_id.data,
             quote_number=generated_quote_number, # Use the generated number
-            date=form.date.data,
+            date=datetime.date.today(),
+            company_id=current_user.company_id,
             subtotal=0.0,
             discount_type=discount_type,
             discount_value=discount_value,
@@ -228,10 +228,10 @@ def add_quote():
         # Redirect to a (future) page to view/edit the quote and add items
         return redirect_to_view_quote(new_quote.id) 
         
-    # Pre-fill form with sensible defaults on GET request
+    # Pre-fill form with sensible defaults on GET request (IVA desde configuración de la empresa)
     if not form.is_submitted():
         form.date.data = datetime.date.today()
-        form.tax_rate.data = Config.DEFAULT_TAX_RATE
+        form.tax_rate.data = get_company_default_tax_rate(current_user.company_id)
         form.discount_type.data = 'none'
         form.discount_value.data = 0.0
         # Pre-fill the quote_number field with the generated number
@@ -263,18 +263,19 @@ def view_quote(id, token=None):
         from flask import abort
         abort(404)
     
-    quote = Quote.query.get_or_404(id)
+    quote = ensure_company_id(id, Quote)
     # Generar token para usar en enlaces internos
     view_token = generate_view_token(id, 'quote')
     item_form = QuoteItemForm()
     status_form = UpdateQuoteStatusForm(obj=quote) # New form instance
 
     # Populate choices for product_id for item_form (always, for GET and POST)
-    item_form.product_id.choices = [(None, 'Seleccione un producto')] + [(p.id, f"{p.code} - {p.name}") for p in Product.query.order_by('name').all()]
+    product_query = filter_by_company(Product.query, Product)
+    item_form.product_id.choices = [(None, 'Seleccione un producto')] + [(p.id, f"{p.code} - {p.name}") for p in product_query.order_by('name').all()]
 
     # If product_id is already set (e.g., after a failed submission), pre-fill unit_price
     if item_form.product_id.data:
-        selected_product = Product.query.get(item_form.product_id.data)
+        selected_product = ensure_company_id(item_form.product_id.data, Product)
         if selected_product:
             item_form.unit_price.data = selected_product.price
 
@@ -291,7 +292,7 @@ def view_quote(id, token=None):
             return redirect_to_view_quote(quote.id)
 
         if 'add_item' in request.form and item_form.validate():
-            product = Product.query.get(item_form.product_id.data)
+            product = ensure_company_id(item_form.product_id.data, Product)
             
             # Calcular stock disponible considerando items ya agregados en esta cotización
             available_stock = product.stock
@@ -342,15 +343,21 @@ def view_quote(id, token=None):
     if request.method == 'GET':
         status_form.status.data = quote.status
 
+    # Recalcular totales siempre antes de mostrar (subtotal, descuento, IVA, total) para que coincidan con los ítems
+    calculate_quote_totals(quote)
+    db.session.commit()
+
     # Conditionally populate choices for product_id for item_form
-    item_form.product_id.choices = [(None, 'Seleccione un producto')] + [(p.id, f"{p.code} - {p.name}") for p in Product.query.order_by('name').all()]
+    product_query = filter_by_company(Product.query, Product)
+    item_form.product_id.choices = [(None, 'Seleccione un producto')] + [(p.id, f"{p.code} - {p.name}") for p in product_query.order_by('name').all()]
 
     return render_template('quotes/view.html', quote=quote, item_form=item_form, status_form=status_form, title=f'Cotización #{quote.quote_number}', csrf_token=status_form.csrf_token._value(), view_token=view_token)
 
 @quotes_bp.route('/<int:quote_id>/items/<int:item_id>/edit', methods=['POST'])
 @login_required
+@role_required(['admin', 'super_admin'])
 def edit_quote_item(quote_id, item_id):
-    quote = Quote.query.get_or_404(quote_id)
+    quote = ensure_company_id(quote_id, Quote)
     if quote.status == 'facturada':
         return jsonify({'success': False, 'message': 'Esta cotización ya ha sido facturada y no puede ser modificada.'})
 
@@ -364,7 +371,7 @@ def edit_quote_item(quote_id, item_id):
         old_total_price = item.total_price
 
         # Validar stock antes de actualizar
-        product = Product.query.get(item.product_id)
+        product = ensure_company_id(item.product_id, Product)
         
         # Calcular stock disponible considerando otros items en la cotización
         available_stock = product.stock
@@ -427,8 +434,9 @@ def edit_quote_item(quote_id, item_id):
 
 @quotes_bp.route('/<int:quote_id>/items/<int:item_id>/delete', methods=['POST'])
 @login_required
+@role_required(['user', 'admin', 'super_admin'])
 def delete_quote_item(quote_id, item_id):
-    quote = Quote.query.get_or_404(quote_id)
+    quote = ensure_company_id(quote_id, Quote)
     if quote.status == 'facturada': # Prevent deletion if quote is invoiced
         flash('Esta cotización ya ha sido facturada y no se pueden eliminar ítems.', 'danger')
         return redirect_to_view_quote(quote.id)
@@ -439,7 +447,7 @@ def delete_quote_item(quote_id, item_id):
         return redirect_to_view_quote(quote.id)
 
     # Update product stock before deleting item
-    product = Product.query.get(item.product_id)
+    product = ensure_company_id(item.product_id, Product)
     previous_stock = product.stock
     product.stock += item.quantity # Return stock
     
@@ -470,7 +478,7 @@ def delete_quote_item(quote_id, item_id):
 @quotes_bp.route('/get_product_price/<int:product_id>')
 @login_required
 def get_product_price(product_id):
-    product = Product.query.get_or_404(product_id)
+    product = ensure_company_id(product_id, Product)
     return jsonify({'price': product.price})
 
 @quotes_bp.route('/<int:id>/pdf')
@@ -486,14 +494,18 @@ def generate_quote_pdf(id, token=None):
         from flask import abort
         abort(404)
     
-    quote = Quote.query.get_or_404(id)
+    quote = ensure_company_id(id, Quote)
+    calculate_quote_totals(quote)
+    db.session.commit()
+
     logo_disk_path = Path(os.path.join(current_app.root_path, 'img', '1.png'))
     logo_path = urllib.parse.urljoin('file:', urllib.request.pathname2url(str(logo_disk_path))) if logo_disk_path.exists() else None
 
-    # Convert total amount to words
-    amount_in_words = num2words(quote.total_amount, lang='es').upper() + ' PESOS M/CTE.'
+    # Valor neto para el PDF (sin IVA): subtotal - descuento; se pasa explícitamente para que el PDF nunca muestre IVA
+    net_total = float(quote.subtotal) - float(quote.discount_amount or 0)
+    amount_in_words = num2words(net_total, lang='es').upper() + ' PESOS M/CTE.'
 
-    html = render_template('quotes/pdf_template.html', quote=quote, logo_path=logo_path, amount_in_words=amount_in_words)
+    html = render_template('quotes/pdf_template.html', quote=quote, logo_path=logo_path, amount_in_words=amount_in_words, total_neto=net_total)
     
     # Define file path
     filename = f'cotizacion_{quote.quote_number}_{datetime.date.today().strftime("%d%m%Y")}.pdf'
@@ -508,86 +520,90 @@ def generate_quote_pdf(id, token=None):
     # Return for download
     return send_from_directory(os.path.join(current_app.instance_path, 'temp_pdfs'), filename, as_attachment=True)
 
-@quotes_bp.route('/<int:id>/convert_to_invoice')
-@quotes_bp.route('/<int:id>/<token>/convert_to_invoice')
+@quotes_bp.route('/<int:id>/convert_to_invoice', methods=['GET'])
+@quotes_bp.route('/<int:id>/<token>/convert_to_invoice', methods=['GET'])
+@login_required
+def convert_to_invoice_get_deprecated(id, token=None):
+    """Enlaces GET antiguos: redirigir a la vista de cotización."""
+    flash('Para convertir a factura use el botón en la cotización.', 'info')
+    if token and validate_view_token(token, id, 'quote'):
+        return redirect_to_view_quote(id)
+    quote = ensure_company_id(id, Quote)
+    return redirect_to_view_quote(quote.id)
+
+
+@quotes_bp.route('/<int:id>/convert_to_invoice', methods=['POST'])
+@quotes_bp.route('/<int:id>/<token>/convert_to_invoice', methods=['POST'])
 @login_required
 def convert_to_invoice(id, token=None):
-    # Si hay token, validarlo
     if token and not validate_view_token(token, id, 'quote'):
         from flask import abort
         abort(404)
-    # Si no hay token, devolver 404 (URLs antiguas no son válidas)
     elif token is None:
         from flask import abort
         abort(404)
-    
-    quote = Quote.query.get_or_404(id)
 
-    # Check if quote has already been converted
+    quote = ensure_company_id(id, Quote)
+
     if quote.status == 'facturada':
         flash('Esta cotización ya ha sido convertida a factura.', 'info')
-        # Find the existing invoice and redirect there
         existing_invoice = Invoice.query.filter_by(quote_id=quote.id).first()
         if existing_invoice:
-            # Generar token para la factura
             from app.routes.invoice import generate_view_token as gen_inv_token
             inv_token = gen_inv_token(existing_invoice.id, 'invoice')
             return redirect(url_for('invoices.view_invoice', id=existing_invoice.id, token=inv_token))
-        else:
-            # Fallback if link is broken for some reason
-            return redirect_to_view_quote(id)
+        return redirect_to_view_quote(id)
 
-    # Generate next invoice number
-    last_invoice = Invoice.query.order_by(Invoice.id.desc()).first()
-    if last_invoice and last_invoice.invoice_number.isdigit():
-        next_invoice_number = int(last_invoice.invoice_number) + 1
-    else:
-        next_invoice_number = 1
-    
-    # Ensure the number starts from at least 118
-    if next_invoice_number < 118:
-        next_invoice_number = 118
+    if not quote.items.count():
+        flash('La cotización no tiene ítems. Agregue productos antes de convertir a factura.', 'warning')
+        return redirect_to_view_quote(id)
 
-    generated_invoice_number = str(next_invoice_number).zfill(4)
+    generated_invoice_number = next_invoice_number(quote.company_id)
 
-    # Create new Invoice (copiar también impuestos y descuentos)
-    new_invoice = Invoice(
-        client_id=quote.client_id,
-        invoice_number=generated_invoice_number,
-        date=datetime.date.today(), # Invoice date is today
-        due_date=datetime.date.today() + datetime.timedelta(days=30), # Calculate due_date
-        subtotal=quote.subtotal,
-        discount_type=quote.discount_type,
-        discount_value=quote.discount_value,
-        discount_amount=quote.discount_amount,
-        tax_rate=quote.tax_rate,
-        tax_amount=quote.tax_amount,
-        total_amount=quote.total_amount,
-        quote_id=quote.id  # <-- Link to the original quote
-    )
-    db.session.add(new_invoice)
-    db.session.flush() # Flush to get new_invoice.id
-
-    # Copy quote items to invoice items
-    for quote_item in quote.items:
-        new_invoice_item = InvoiceItem(
-            invoice_id=new_invoice.id,
-            product_id=quote_item.product_id,
-            quantity=quote_item.quantity,
-            unit_price=quote_item.unit_price,
-            total_price=quote_item.total_price
+    try:
+        new_invoice = Invoice(
+            company_id=quote.company_id,
+            client_id=quote.client_id,
+            invoice_number=generated_invoice_number,
+            date=datetime.date.today(),
+            due_date=datetime.date.today() + datetime.timedelta(days=30),
+            subtotal=quote.subtotal,
+            discount_type=quote.discount_type,
+            discount_value=quote.discount_value,
+            discount_amount=quote.discount_amount,
+            tax_rate=quote.tax_rate,
+            tax_amount=quote.tax_amount,
+            total_amount=quote.total_amount,
+            quote_id=quote.id,
         )
-        db.session.add(new_invoice_item)
+        db.session.add(new_invoice)
+        db.session.flush()
 
-    # Update quote status
-    quote.status = 'facturada'
+        for quote_item in quote.items:
+            db.session.add(InvoiceItem(
+                invoice_id=new_invoice.id,
+                product_id=quote_item.product_id,
+                quantity=quote_item.quantity,
+                unit_price=quote_item.unit_price,
+                total_price=quote_item.total_price,
+            ))
 
-    db.session.commit()
-    flash(f'Cotización {quote.quote_number} convertida a Factura {new_invoice.invoice_number} con éxito.', 'success')
-    # Generar token para la factura
-    from app.routes.invoice import generate_view_token as gen_inv_token
-    inv_token = gen_inv_token(new_invoice.id, 'invoice')
-    return redirect(url_for('invoices.view_invoice', id=new_invoice.id, token=inv_token))
+        quote.status = 'facturada'
+        db.session.commit()
+
+        log_audit('create', 'invoice', new_invoice.id, {'from_quote_id': quote.id, 'invoice_number': new_invoice.invoice_number})
+
+        flash(f'Cotización {quote.quote_number} convertida a Factura {new_invoice.invoice_number} con éxito.', 'success')
+        from app.routes.invoice import generate_view_token as gen_inv_token
+        inv_token = gen_inv_token(new_invoice.id, 'invoice')
+        return redirect(url_for('invoices.view_invoice', id=new_invoice.id, token=inv_token))
+    except IntegrityError:
+        db.session.rollback()
+        flash('No se pudo crear la factura: el número de factura ya existe. Intente de nuevo.', 'danger')
+        return redirect_to_view_quote(id)
+    except Exception:
+        db.session.rollback()
+        raise
 
 @quotes_bp.route('/<int:id>/send_email', methods=['GET', 'POST'])
 @quotes_bp.route('/<int:id>/<token>/send_email', methods=['GET', 'POST'])
@@ -602,15 +618,18 @@ def send_quote_email(id, token=None):
         from flask import abort
         abort(404)
     
-    quote = Quote.query.get_or_404(id)
+    quote = ensure_company_id(id, Quote)
     # For simplicity, let's assume the recipient email is the client's email
     recipient_email = quote.client.email
 
     if request.method == 'POST':
-        # Generate PDF content
+        # Recalcular totales y generar PDF sin IVA (igual que Generar PDF)
+        calculate_quote_totals(quote)
+        net_total = float(quote.subtotal) - float(quote.discount_amount or 0)
+        amount_in_words = num2words(net_total, lang='es').upper() + ' PESOS M/CTE.'
         logo_disk_path = Path(os.path.join(current_app.root_path, 'img', '1.png'))
         logo_path = urllib.parse.urljoin('file:', urllib.request.pathname2url(str(logo_disk_path))) if logo_disk_path.exists() else None
-        html = render_template('quotes/pdf_template.html', quote=quote, logo_path=logo_path)
+        html = render_template('quotes/pdf_template.html', quote=quote, logo_path=logo_path, amount_in_words=amount_in_words, total_neto=net_total)
         pdf_content = weasyprint.HTML(string=html, base_url=request.base_url).write_pdf()
 
         msg = Message(
@@ -652,7 +671,7 @@ def send_quote_whatsapp(id, token=None):
         from flask import abort
         abort(404)
     
-    quote = Quote.query.get_or_404(id)
+    quote = ensure_company_id(id, Quote)
     client_phone = quote.client.whatsapp_number
 
     if not client_phone:

@@ -3,7 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}{% endblock %} - Sistema de Cotizaciones</title>
+    <link rel="icon" href="{{ url_for('main.favicon') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
@@ -18,24 +20,182 @@
             flex-direction: column;
         }
         
-        .navbar {
-            flex-shrink: 0;
+        /* Sidebar lateral izquierdo */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, #198754 0%, #157347 100%);
+            color: #fff;
+            overflow-y: auto;
+            z-index: 1030;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.15);
         }
         
-        .navbar-nav .nav-link {
-            color: white !important; /* Force white color */
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Add subtle shadow for contrast */
+        .sidebar-header {
+            padding: 1.25rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            text-align: center;
         }
         
-        .container.mt-4,
-        .container-fluid {
+        .sidebar-header .brand {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #fff;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .sidebar-header .brand:hover {
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .sidebar-header .user-company {
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            opacity: 0.95;
+        }
+        
+        .sidebar .accordion {
+            --bs-accordion-bg: transparent;
+            --bs-accordion-border-color: rgba(255,255,255,0.15);
+            --bs-accordion-btn-bg: transparent;
+            --bs-accordion-active-bg: rgba(255,255,255,0.15);
+            --bs-accordion-btn-focus-box-shadow: none;
+            padding-bottom: 5rem;
+        }
+        
+        .sidebar .accordion-button {
+            color: #fff !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 0.75rem 1rem;
+            box-shadow: none !important;
+        }
+        
+        .sidebar .accordion-button:not(.collapsed) {
+            background: rgba(255,255,255,0.15) !important;
+            color: #fff !important;
+        }
+        
+        .sidebar .accordion-button::after {
+            filter: brightness(0) invert(1);
+        }
+        
+        .sidebar .accordion-body {
+            padding: 0;
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .sidebar .accordion-body a {
+            display: block;
+            padding: 0.6rem 1rem 0.6rem 2rem;
+            color: rgba(255,255,255,0.95);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .sidebar .accordion-body a:hover {
+            background: rgba(255,255,255,0.1);
+            border-left-color: #fff;
+        }
+        
+        .sidebar .accordion-body a i {
+            width: 1.25rem;
+            margin-right: 0.5rem;
+            opacity: 0.9;
+        }
+        
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.15);
+        }
+        
+        .sidebar-footer .btn-logout {
+            width: 100%;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            font-weight: 600;
+        }
+        
+        .sidebar-footer .btn-logout:hover {
+            background: rgba(255,255,255,0.3);
+            color: #fff;
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        .main-with-sidebar {
+            margin-left: 280px;
+            min-height: 100vh;
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 0;
-            padding-top: 1rem;
-            padding-bottom: 1rem;
         }
+        
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .main-with-sidebar {
+                margin-left: 0;
+            }
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 1025;
+            }
+            .sidebar-overlay.show {
+                display: block;
+            }
+            /* Botón hamburguesa: fijo, color blanco */
+            .btn-toggle-sidebar {
+                position: fixed;
+                top: 1rem;
+                left: 1rem;
+                z-index: 1040;
+                width: 2.75rem;
+                height: 2.75rem;
+                padding: 0;
+                border-radius: 0.5rem;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                background-color: #fff;
+                color: #157347;
+                border: 1px solid rgba(0,0,0,0.1);
+            }
+            .btn-toggle-sidebar:hover {
+                background-color: #f8f9fa;
+                color: #198754;
+            }
+        }
+        /* Botón hamburguesa visible solo en móvil/tablet (< 992px) */
+        .btn-toggle-sidebar {
+            display: block;
+        }
+        @media (min-width: 992px) {
+            .btn-toggle-sidebar {
+                display: none !important;
+            }
+        }
+        
         
         /* Ajustar para páginas con poco contenido */
         .container.mt-4 > *,
@@ -73,7 +233,7 @@
         /* Estilos para mensajes flash como tarjetas */
         .flash-messages-container {
             position: fixed;
-            top: 80px;
+            top: 1rem;
             right: 20px;
             z-index: 1050;
             max-width: 400px;
@@ -190,72 +350,228 @@
                 max-width: none;
             }
         }
+
+        /* Módulos listado: formato moderno unificado */
+        .module-list .page-header { margin-bottom: 1rem; }
+        .module-list .page-title { font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+        .module-list .page-subtitle { font-size: 0.875rem; color: #6c757d; margin: 0.25rem 0 0 0; }
+        .module-list .list-filters-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
+        .module-list .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; }
+        .module-list .card-body { padding: 0.5rem 0.75rem; }
+        @media (min-width: 768px) { .module-list .card-body { padding: 0.75rem 1.25rem; } }
+        .module-list .table-modern { border-collapse: separate; border-spacing: 0; margin-bottom: 0; }
+        .module-list .table-modern thead th { background: #e9ecef; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #6c757d; padding: 0.6rem 0.75rem; border: none; }
+        .module-list .table-modern tbody td { padding: 0.65rem 0.75rem; font-size: 0.9rem; vertical-align: middle; border-top: 1px solid #eee; }
+        .module-list .table-modern tbody tr:hover { background: rgba(25, 135, 84, 0.04); }
+        .module-list .table-modern .badge { font-weight: 600; }
+        .module-list .empty-state-module { padding: 2rem 1rem; text-align: center; color: #6c757d; }
+        .module-list .empty-state-module i { font-size: 2.5rem; margin-bottom: 0.5rem; color: #dee2e6; }
+
+        /* Vistas de detalle (traslado, recepción, pedido, etc.) */
+        .detail-module { --detail-radius: 12px; --detail-muted: #6c757d; }
+        .detail-module .card { border: none; border-radius: var(--detail-radius); box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; }
+        .detail-module .card-header { border: none; padding: 1rem 1.25rem; font-weight: 600; }
+        .detail-module .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem 1.5rem; }
+        .detail-module .info-item { padding: 0.4rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+        .detail-module .info-item:last-child { border-bottom: none; }
+        .detail-module .info-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--detail-muted); margin-bottom: 0.15rem; }
+        .detail-module .info-value { font-size: 0.95rem; font-weight: 500; color: #212529; }
+        .detail-module .section-card { background: #f8f9fa; border-radius: var(--detail-radius); border: 1px solid rgba(0,0,0,0.06); padding: 1rem 1.25rem; }
+        .detail-module .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--detail-muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .detail-module .table-modern { border-collapse: separate; border-spacing: 0; border-radius: 8px; overflow: hidden; background: #fff; margin-bottom: 0; }
+        .detail-module .table-modern thead th { background: #e9ecef; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--detail-muted); padding: 0.65rem 1rem; border: none; }
+        .detail-module .table-modern tbody td { padding: 0.75rem 1rem; font-size: 0.9rem; border-top: 1px solid #eee; vertical-align: middle; }
+        .detail-module .table-modern tbody tr:hover { background: rgba(25, 135, 84, 0.04); }
+        .detail-module .btn-actions .btn { border-radius: 8px; font-weight: 500; }
     </style>
     {% block styles %}{% endblock %}
   </head>
   <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
-        <div class="container">
-            <a class="navbar-brand fw-bold fs-5" href="{{ url_for('main.index') }}">Cotizador</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto">
-                    {% if current_user.is_authenticated %}
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.dashboard') }}">Dashboard</a>
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('clients.list_clients') }}">Clientes</a>
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('products.list_products') }}">Productos</a>
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('quotes.list_quotes') }}">Cotizaciones</a>
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('invoices.list_invoices') }}">Facturas</a>
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('inventory.list_inventory') }}">Inventario</a>
-                        {% if current_user.role == 'admin' %}
-                            <a class="nav-link fw-bold fs-6" href="{{ url_for('admin.list_users') }}">Admin Usuarios</a>
-                        {% endif %}
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.logout') }}">Cerrar Sesión</a>
-                    {% else %}
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.index') }}">Inicio</a>
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.login') }}">Iniciar Sesión</a>
-                        <a class="nav-link fw-bold fs-6" href="{{ url_for('main.register') }}">Registrarse</a>
-                    {% endif %}
-                </div>
+    <!-- Overlay para móvil al abrir sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="document.getElementById('sidebar').classList.remove('show'); this.classList.remove('show');"></div>
+
+    <!-- Barra lateral izquierda con acordeón -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_with_token('main.index') }}" class="brand"><i class="fas fa-calculator me-2"></i>Cotizador</a>
+            {% if current_user.is_authenticated %}
+            <div class="user-company">
+                <div><i class="fas fa-user me-1"></i>{{ current_user.name or current_user.username }}</div>
+                <div><i class="fas fa-building me-1"></i>{{ current_user.company.name if current_user.company else 'Super Admin' }}</div>
             </div>
+            {% endif %}
         </div>
-    </nav>
-    <!-- Flash Messages Container -->
-    <div class="flash-messages-container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-            <div class="flash-card {{ category }}" role="alert">
-                <div class="flash-card-icon">
-                    {% if category == 'success' %}
-                        <i class="fas fa-check-circle"></i>
-                    {% elif category == 'danger' %}
-                        <i class="fas fa-exclamation-circle"></i>
-                    {% elif category == 'warning' %}
-                        <i class="fas fa-exclamation-triangle"></i>
-                    {% elif category == 'info' %}
-                        <i class="fas fa-info-circle"></i>
-                    {% else %}
-                        <i class="fas fa-bell"></i>
-                    {% endif %}
+
+        {% if current_user.is_authenticated %}
+        <div class="accordion accordion-flush" id="sidebarAccordion">
+            {% if current_user.role != 'super_admin' %}
+            {% if current_user.role in ['admin', 'super_admin', 'user'] %}
+            <div class="accordion-item border-0">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#accPrincipal" aria-expanded="false" aria-controls="accPrincipal">
+                        <i class="fas fa-tachometer-alt me-2"></i> Principal
+                    </button>
+                </h2>
+                <div id="accPrincipal" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
+                    <div class="accordion-body">
+                        <a href="{{ url_with_token('main.dashboard') }}"><i class="fas fa-chart-line"></i> Dashboard</a>
+                    </div>
                 </div>
-                <div class="flash-card-message">{{ message }}</div>
-                <button type="button" class="flash-card-close" onclick="this.parentElement.remove()" aria-label="Cerrar">
-                    <i class="fas fa-times"></i>
-                </button>
             </div>
-            {% endfor %}
+            <div class="accordion-item border-0">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#accVentas" aria-expanded="false" aria-controls="accVentas">
+                        <i class="fas fa-store me-2"></i> Ventas
+                    </button>
+                </h2>
+                <div id="accVentas" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
+                    <div class="accordion-body">
+                        <a href="{{ url_with_token('clients.list_clients') }}"><i class="fas fa-users"></i> Clientes</a>
+                        <a href="{{ url_with_token('products.list_products') }}"><i class="fas fa-boxes"></i> Productos</a>
+                        <a href="{{ url_with_token('quotes.list_quotes') }}"><i class="fas fa-file-invoice"></i> Cotizaciones</a>
+                        <a href="{{ url_with_token('invoices.list_invoices') }}"><i class="fas fa-file-invoice-dollar"></i> Facturas</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="accordion-item border-0">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#accInventario" aria-expanded="false" aria-controls="accInventario">
+                        <i class="fas fa-warehouse me-2"></i> Inventario
+                    </button>
+                </h2>
+                <div id="accInventario" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
+                    <div class="accordion-body">
+                        {% if current_user.role == 'despachador' %}
+                        <a href="{{ url_with_token('dispatch_order.list_my_orders') }}"><i class="fas fa-shopping-cart"></i> Mis pedidos</a>
+                        <a href="{{ url_with_token('dispatch_order.create_order') }}"><i class="fas fa-plus-circle"></i> Solicitar productos</a>
+                        <a href="{{ url_with_token('delivery.tablet_view') }}"><i class="fas fa-tablet-alt"></i> Despachos (Tablet)</a>
+                        <a href="{{ url_with_token('inventory.list_inventory') }}"><i class="fas fa-list"></i> Ver inventario</a>
+                        {% else %}
+                        {% if current_user.role in ['admin', 'super_admin', 'bodega_principal'] %}
+                        <a href="{{ url_with_token('reception.list_receptions') }}"><i class="fas fa-truck-loading"></i> Recepción</a>
+                        {% endif %}
+                        <a href="{{ url_with_token('inventory.list_inventory') }}"><i class="fas fa-list"></i> Ver inventario</a>
+                        <a href="{{ url_with_token('transfer.list_transfers') }}"><i class="fas fa-exchange-alt"></i> Traslados</a>
+                        <a href="{{ url_with_token('dispatch_order.list_pending') }}"><i class="fas fa-clipboard-list"></i> Pedidos pendientes{% if pending_dispatch_orders_count %}<span class="badge bg-danger ms-1">{{ pending_dispatch_orders_count }}</span>{% endif %}</a>
+                        <a href="{{ url_with_token('delivery.list_deliveries') }}"><i class="fas fa-truck"></i> Despachos</a>
+                        <a href="{{ url_with_token('delivery.tablet_view') }}"><i class="fas fa-tablet-alt"></i> Despachos (Tablet)</a>
+                        <a href="{{ url_with_token('inventory.all_history') }}"><i class="fas fa-history"></i> Historial</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if current_user.role == 'admin' %}
+            <div class="accordion-item border-0">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#accAdmin" aria-expanded="false" aria-controls="accAdmin">
+                        <i class="fas fa-cog me-2"></i> Administración
+                    </button>
+                </h2>
+                <div id="accAdmin" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
+                    <div class="accordion-body">
+                        <a href="{{ url_with_token('admin.list_users') }}"><i class="fas fa-user-cog"></i> Admin Usuarios</a>
+                        <a href="{{ url_with_token('admin.list_companies') }}"><i class="fas fa-building"></i> Mi Empresa</a>
+                        <a href="{{ url_with_token('admin.list_warehouses') }}"><i class="fas fa-warehouse"></i> Administración de almacenes</a>
+                        <a href="{{ url_with_token('admin.list_delivery_points') }}"><i class="fas fa-truck-loading"></i> Puntos de despacho</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if current_user.role == 'super_admin' %}
+            <div class="accordion-item border-0">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#accSistema" aria-expanded="false" aria-controls="accSistema">
+                        <i class="fas fa-shield-alt me-2"></i> Sistema
+                    </button>
+                </h2>
+                <div id="accSistema" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
+                    <div class="accordion-body">
+                        <a href="{{ url_with_token('admin.list_companies') }}"><i class="fas fa-building"></i> Empresas</a>
+                        <a href="{{ url_with_token('admin.list_all_users') }}"><i class="fas fa-users-cog"></i> Todos los Usuarios</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('main.logout') }}" class="btn btn-sm btn-logout"><i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión</a>
+        </div>
+        {% else %}
+        <div class="p-3">
+            <a href="{{ url_with_token('main.index') }}" class="d-block py-2 text-white text-decoration-none"><i class="fas fa-home me-2"></i>Inicio</a>
+            <a href="{{ url_with_token('main.login') }}" class="d-block py-2 text-white text-decoration-none"><i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión</a>
+            <a href="{{ url_with_token('main.register') }}" class="d-block py-2 text-white text-decoration-none"><i class="fas fa-user-plus me-2"></i>Registrarse</a>
+        </div>
         {% endif %}
-        {% endwith %}
-    </div>
-    
-    <div class="container" style="margin-top: 1rem; margin-bottom: 1rem;">
-        {% block content %}{% endblock %}
+    </aside>
+
+    <div class="main-with-sidebar">
+        <!-- Botón hamburguesa: mostrar/ocultar menú lateral (solo en móvil/tablet) -->
+        <button class="btn btn-toggle-sidebar d-lg-none" type="button" id="btnToggleSidebar" onclick="toggleSidebar();" aria-label="Abrir o cerrar menú">
+            <i class="fas fa-bars" id="iconToggleSidebar"></i>
+        </button>
+        <!-- Flash Messages Container -->
+        <div class="flash-messages-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="flash-card {{ category }}" role="alert">
+                    <div class="flash-card-icon">
+                        {% if category == 'success' %}
+                            <i class="fas fa-check-circle"></i>
+                        {% elif category == 'danger' %}
+                            <i class="fas fa-exclamation-circle"></i>
+                        {% elif category == 'warning' %}
+                            <i class="fas fa-exclamation-triangle"></i>
+                        {% elif category == 'info' %}
+                            <i class="fas fa-info-circle"></i>
+                        {% else %}
+                            <i class="fas fa-bell"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flash-card-message">{{ message }}</div>
+                    <button type="button" class="flash-card-close" onclick="this.parentElement.remove()" aria-label="Cerrar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="container flex-grow-1" style="margin-top: 1rem; margin-bottom: 1rem;">
+            {% block content %}{% endblock %}
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            var overlay = document.getElementById('sidebarOverlay');
+            var icon = document.getElementById('iconToggleSidebar');
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+            if (sidebar.classList.contains('show')) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+                document.getElementById('btnToggleSidebar').setAttribute('aria-label', 'Cerrar menú');
+            } else {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+                document.getElementById('btnToggleSidebar').setAttribute('aria-label', 'Abrir menú');
+            }
+        }
+        // Cerrar sidebar al hacer clic en el overlay (actualizar icono del botón)
+        document.getElementById('sidebarOverlay').addEventListener('click', function() {
+            var sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('show')) {
+                document.getElementById('iconToggleSidebar').classList.remove('fa-times');
+                document.getElementById('iconToggleSidebar').classList.add('fa-bars');
+                document.getElementById('btnToggleSidebar').setAttribute('aria-label', 'Abrir menú');
+            }
+        });
         // Auto-remover mensajes flash después de 5 segundos
         document.addEventListener('DOMContentLoaded', function() {
             const flashCards = document.querySelectorAll('.flash-card');

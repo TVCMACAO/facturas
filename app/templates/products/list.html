@@ -337,24 +337,10 @@
         </h1>
     </div>
     
-    <!-- Search and Add Section -->
-    <div class="search-card">
-        <form action="{{ url_for('products.list_products') }}" method="get" class="d-flex gap-2 align-items-center" id="searchForm">
-            <div class="search-input-wrapper flex-grow-1">
-                <i class="fas fa-search"></i>
-                <input type="search" 
-                       class="form-control" 
-                       id="searchInput"
-                       placeholder="Buscar por código, nombre o descripción" 
-                       autocomplete="off">
-                <button type="button" class="btn-clear-search" onclick="clearSearch()" title="Limpiar búsqueda" data-bs-toggle="tooltip" data-bs-placement="top">
-                    <i class="fas fa-times-circle"></i>
-                </button>
-            </div>
-            <a href="{{ url_for('products.add_product') }}" class="btn btn-add-product text-white" title="Añadir Producto" data-bs-toggle="tooltip" data-bs-placement="top">
-                <i class="fas fa-plus"></i>
-            </a>
-        </form>
+    {% set filter_action = url_with_token('products.list_products') %}
+    {% include '_list_filters.html' with context %}
+    <div class="d-flex justify-content-end mb-2">
+        <a href="{{ url_with_token('products.add_product') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Añadir producto</a>
     </div>
     
     <!-- Products Table -->
@@ -365,6 +351,7 @@
                     <th>Código</th>
                     <th>Nombre del Producto</th>
                     <th>Descripción</th>
+                    <th>Barras / Unidad</th>
                     <th>Precio</th>
                     <th>Acciones</th>
                 </tr>
@@ -396,18 +383,23 @@
                             </div>
                         </td>
                         <td>
+                            <small>{{ product.barcode or '—' }}</small>
+                            <br><span class="badge bg-secondary">{{ product.unit_of_sale or 'unidad' }}</span>
+                        </td>
+                        <td>
                             <span class="product-price">{{ product.price|currency_format }}</span>
                         </td>
                         <td>
                             <div class="product-actions">
-                                <a href="{{ url_for('products.edit_product', id=product.id) }}" 
+                                <a href="{{ url_with_token('products.edit_product', id=product.id) }}" 
                                    class="btn-action btn-action-edit" 
                                    title="Editar producto"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <form action="{{ url_for('products.delete_product', id=product.id) }}" method="post" style="display:inline;">
+                                <form action="{{ url_with_token('products.delete_product', id=product.id) }}" method="post" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                     <button type="submit" 
                                             class="btn-action btn-action-delete" 
                                             title="Eliminar producto"
@@ -424,10 +416,10 @@
                     {% endfor %}
                 {% else %}
                     <tr class="empty-table-row">
-                        <td colspan="5">
+                        <td colspan="6">
                             <i class="fas fa-box-open" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem; display: block;"></i>
                             <div>No hay productos registrados</div>
-                            <a href="{{ url_for('products.add_product') }}" class="btn btn-primary mt-3">
+                            <a href="{{ url_with_token('products.add_product') }}" class="btn btn-primary mt-3">
                                 <i class="fas fa-plus me-2"></i>Añadir Primer Producto
                             </a>
                         </td>
@@ -461,281 +453,16 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Almacenar el estado original de la tabla
-let originalTableHTML = null;
-let searchTimeout = null;
-let tooltipInstances = [];
-
-// Función para escapar HTML y prevenir XSS
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
-
-// Función para resaltar texto coincidente
-function highlightText(text, query) {
-    if (!query || !text) return escapeHtml(String(text));
-    
-    const escapedText = escapeHtml(String(text));
-    const escapedQuery = escapeHtml(String(query));
-    const regex = new RegExp(`(${escapedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    
-    return escapedText.replace(regex, '<span class="highlight">$1</span>');
-}
-
-// Función para formatear moneda
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(amount).replace('COP', '$');
-}
-
-// Función para truncar descripción
-function truncateDescription(description, limit = 100) {
-    if (!description) return 'Sin descripción';
-    if (description.length <= limit) return description;
-    return description.substring(0, limit) + '...';
-}
-
-// Función para actualizar la tabla con los resultados
-function updateTable(products, query) {
-    const tbody = document.querySelector('.products-table tbody');
-    
-    if (!tbody) return;
-    
-    // Guardar HTML original si no está guardado
-    if (originalTableHTML === null) {
-        originalTableHTML = tbody.innerHTML;
-    }
-    
-    // Limpiar tooltips existentes
-    tooltipInstances.forEach(tooltip => {
-        if (tooltip && typeof tooltip.dispose === 'function') {
-            tooltip.dispose();
-        }
-    });
-    tooltipInstances = [];
-    
-    if (!products || products.length === 0) {
-        tbody.innerHTML = `
-            <tr class="empty-table-row">
-                <td colspan="5">
-                    <i class="fas fa-box-open" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem; display: block;"></i>
-                    <div>No se encontraron productos</div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    // Generar filas HTML
-    let rowsHTML = '';
-    products.forEach(product => {
-        const description = product.description || '';
-        const descriptionLimit = 100;
-        const truncatedDesc = truncateDescription(description, descriptionLimit);
-        const isTruncated = description.length > descriptionLimit;
-        
-        rowsHTML += `
-            <tr>
-                <td>
-                    <span class="product-code">${highlightText(product.code, query)}</span>
-                </td>
-                <td>
-                    <span class="product-name">${highlightText(product.name, query)}</span>
-                </td>
-                <td>
-                    <div class="product-description">
-                        ${isTruncated ? 
-                            `<span class="description-text-clickable" 
-                                   data-bs-toggle="modal" 
-                                   data-bs-target="#descriptionModal" 
-                                   data-description="${escapeHtml(description)}" 
-                                   title="Clic para ver descripción completa">
-                                ${highlightText(truncatedDesc, query)}
-                            </span>` :
-                            highlightText(description || 'Sin descripción', query)
-                        }
-                    </div>
-                </td>
-                <td>
-                    <span class="product-price">${formatCurrency(product.price)}</span>
-                </td>
-                <td>
-                    <div class="product-actions">
-                        <a href="/products/${product.id}/edit" 
-                           class="btn-action btn-action-edit" 
-                           title="Editar producto"
-                           data-bs-toggle="tooltip" 
-                           data-bs-placement="top">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <form action="/products/${product.id}/delete" method="post" style="display:inline;">
-                            <button type="submit" 
-                                    class="btn-action btn-action-delete" 
-                                    title="Eliminar producto"
-                                    data-bs-toggle="tooltip" 
-                                    data-bs-placement="top"
-                                    onclick="return confirm('¿Estás seguro de que quieres eliminar este producto?');"
-                                    style="border: 1px solid #dc3545; background: rgba(220, 53, 69, 0.1); color: #dc3545; cursor: pointer;">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
-    
-    tbody.innerHTML = rowsHTML;
-    
-    // Re-inicializar tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipInstances = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-}
-
-// Función para realizar búsqueda en tiempo real
-function performLiveSearch() {
-    const searchInput = document.getElementById('searchInput');
-    const query = searchInput ? searchInput.value.trim() : '';
-    const tableWrapper = document.querySelector('.products-table-wrapper');
-    const clearBtn = document.querySelector('.btn-clear-search');
-    
-    // Mostrar/ocultar botón de limpiar
-    if (clearBtn) {
-        if (query.length > 0) {
-            clearBtn.classList.add('show');
-        } else {
-            clearBtn.classList.remove('show');
-        }
-    }
-    
-    // Si el campo está vacío, restaurar tabla original
-    if (!query) {
-        const tbody = document.querySelector('.products-table tbody');
-        if (tbody && originalTableHTML !== null) {
-            tbody.innerHTML = originalTableHTML;
-            // Re-inicializar tooltips
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipInstances = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        }
-        return;
-    }
-    
-    // Mostrar indicador de carga
-    if (tableWrapper) {
-        tableWrapper.classList.add('search-loading');
-    }
-    
-    // Realizar petición AJAX
-    fetch(`/products/search?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            updateTable(data.products || [], query);
-        })
-        .catch(error => {
-            console.error('Error en búsqueda:', error);
-            // En caso de error, mantener la tabla actual
-        })
-        .finally(() => {
-            // Remover indicador de carga
-            if (tableWrapper) {
-                tableWrapper.classList.remove('search-loading');
-            }
-        });
-}
-
-function clearSearch() {
-    const searchInput = document.getElementById('searchInput');
-    const clearBtn = document.querySelector('.btn-clear-search');
-    if (searchInput) {
-        searchInput.value = '';
-        if (clearBtn) {
-            clearBtn.classList.remove('show');
-        }
-        performLiveSearch(); // Restaurar tabla original
-    }
-}
-
-// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function () {
-    // Inicializar tooltips de Bootstrap
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipInstances = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-    
-    // Agregar event listener al campo de búsqueda con debounce reducido
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        // Cargar valor inicial si existe en la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const initialSearch = urlParams.get('q');
-        if (initialSearch) {
-            searchInput.value = initialSearch;
-            performLiveSearch();
-        }
-        
-        searchInput.addEventListener('input', function() {
-            // Limpiar timeout anterior
-            if (searchTimeout) {
-                clearTimeout(searchTimeout);
-            }
-            
-            // Búsqueda inmediata para primera letra, luego debounce de 200ms
-            const query = this.value.trim();
-            if (query.length === 1) {
-                performLiveSearch();
-            } else {
-                // Establecer nuevo timeout (debounce de 200ms para mejor respuesta)
-                searchTimeout = setTimeout(function() {
-                    performLiveSearch();
-                }, 200);
-            }
-        });
-        
-        // Prevenir que Enter en el campo de búsqueda envíe el formulario
-        searchInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                performLiveSearch();
-            }
-        });
-    }
-    
-    // Prevenir que el formulario se envíe automáticamente
-    const searchForm = document.getElementById('searchForm');
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            performLiveSearch();
-        });
-    }
-
-    // Modal de descripción
-    const descriptionModal = document.getElementById('descriptionModal');
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
+    var descriptionModal = document.getElementById('descriptionModal');
     if (descriptionModal) {
         descriptionModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            const description = button.getAttribute('data-description');
-            const modalBody = descriptionModal.querySelector('#fullDescriptionContent');
-            
-            // The description is HTML-escaped in the template,
-            // so using innerHTML is safe and will render characters like newlines correctly.
-            modalBody.innerHTML = description;
+            var button = event.relatedTarget;
+            var description = button.getAttribute('data-description');
+            var modalBody = descriptionModal.querySelector('#fullDescriptionContent');
+            if (modalBody && description) modalBody.innerHTML = description;
         });
     }
 });

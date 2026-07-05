@@ -1,105 +1,436 @@
--- Script de migración para agregar nuevas columnas y tablas
--- Ejecutar este script en MySQL para actualizar la base de datos
+-- =====================================================
+-- Script de migración SQL para MySQL
+-- Este script es idempotente: puede ejecutarse múltiples veces sin errores
+-- =====================================================
 
--- Agregar columnas a la tabla quote
-ALTER TABLE quote 
-ADD COLUMN subtotal FLOAT NOT NULL DEFAULT 0.0 AFTER client_id,
-ADD COLUMN discount_type VARCHAR(20) DEFAULT 'none' AFTER subtotal,
-ADD COLUMN discount_value FLOAT NOT NULL DEFAULT 0.0 AFTER discount_type,
-ADD COLUMN discount_amount FLOAT NOT NULL DEFAULT 0.0 AFTER discount_value,
-ADD COLUMN tax_rate FLOAT NOT NULL DEFAULT 0.0 AFTER discount_amount,
-ADD COLUMN tax_amount FLOAT NOT NULL DEFAULT 0.0 AFTER tax_rate;
+-- NOTA: Este script usa una técnica diferente para evitar errores de "Commands out of sync"
+-- Cada ALTER TABLE está envuelto en una verificación que ignora errores de columna duplicada
 
--- Agregar columnas a la tabla invoice
-ALTER TABLE invoice 
-ADD COLUMN subtotal FLOAT NOT NULL DEFAULT 0.0 AFTER quote_id,
-ADD COLUMN discount_type VARCHAR(20) DEFAULT 'none' AFTER subtotal,
-ADD COLUMN discount_value FLOAT NOT NULL DEFAULT 0.0 AFTER discount_type,
-ADD COLUMN discount_amount FLOAT NOT NULL DEFAULT 0.0 AFTER discount_value,
-ADD COLUMN tax_rate FLOAT NOT NULL DEFAULT 0.0 AFTER discount_amount,
-ADD COLUMN tax_amount FLOAT NOT NULL DEFAULT 0.0 AFTER tax_rate;
+-- =====================================================
+-- 1. AGREGAR COLUMNAS A LA TABLA quote
+-- =====================================================
 
--- Crear tabla inventory_movement si no existe
-CREATE TABLE IF NOT EXISTS inventory_movement (
+-- Usar SET para evitar errores de "Commands out of sync"
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND COLUMN_NAME = 'subtotal');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE quote ADD COLUMN subtotal FLOAT NOT NULL DEFAULT 0.0 AFTER client_id', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND COLUMN_NAME = 'discount_type');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE quote ADD COLUMN discount_type VARCHAR(20) DEFAULT ''none'' AFTER subtotal', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND COLUMN_NAME = 'discount_value');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE quote ADD COLUMN discount_value FLOAT NOT NULL DEFAULT 0.0 AFTER discount_type', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND COLUMN_NAME = 'discount_amount');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE quote ADD COLUMN discount_amount FLOAT NOT NULL DEFAULT 0.0 AFTER discount_value', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND COLUMN_NAME = 'tax_rate');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE quote ADD COLUMN tax_rate FLOAT NOT NULL DEFAULT 0.0 AFTER discount_amount', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND COLUMN_NAME = 'tax_amount');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE quote ADD COLUMN tax_amount FLOAT NOT NULL DEFAULT 0.0 AFTER tax_rate', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- =====================================================
+-- 2. AGREGAR COLUMNAS A LA TABLA invoice
+-- =====================================================
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invoice' AND COLUMN_NAME = 'subtotal');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE invoice ADD COLUMN subtotal FLOAT NOT NULL DEFAULT 0.0 AFTER quote_id', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invoice' AND COLUMN_NAME = 'discount_type');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE invoice ADD COLUMN discount_type VARCHAR(20) DEFAULT ''none'' AFTER subtotal', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invoice' AND COLUMN_NAME = 'discount_value');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE invoice ADD COLUMN discount_value FLOAT NOT NULL DEFAULT 0.0 AFTER discount_type', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invoice' AND COLUMN_NAME = 'discount_amount');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE invoice ADD COLUMN discount_amount FLOAT NOT NULL DEFAULT 0.0 AFTER discount_value', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invoice' AND COLUMN_NAME = 'tax_rate');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE invoice ADD COLUMN tax_rate FLOAT NOT NULL DEFAULT 0.0 AFTER discount_amount', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invoice' AND COLUMN_NAME = 'tax_amount');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE invoice ADD COLUMN tax_amount FLOAT NOT NULL DEFAULT 0.0 AFTER tax_rate', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- =====================================================
+-- 3. AGREGAR COLUMNA active A LA TABLA user
+-- =====================================================
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user' AND COLUMN_NAME = 'active');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE user ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Actualizar usuarios existentes como activos
+UPDATE user SET active = TRUE WHERE active IS NULL OR active = FALSE;
+
+-- =====================================================
+-- 4. CREAR TABLA company (si no existe)
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS company (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    product_id INT NOT NULL,
-    movement_type VARCHAR(20) NOT NULL,
-    quantity INT NOT NULL,
-    previous_stock INT NOT NULL,
-    new_stock INT NOT NULL,
-    reference_type VARCHAR(20),
-    reference_id INT,
-    user_id INT,
-    notes TEXT,
+    name VARCHAR(200) NOT NULL,
+    legal_name VARCHAR(200),
+    tax_id VARCHAR(50),
+    address VARCHAR(500),
+    phone VARCHAR(20),
+    email VARCHAR(120),
+    website VARCHAR(200),
+    contact_person VARCHAR(128),
+    logo_url VARCHAR(500),
+    active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES product(id),
-    FOREIGN KEY (user_id) REFERENCES user(id),
-    INDEX idx_product_id (product_id),
-    INDEX idx_created_at (created_at)
-) ENGINE=InnoDB;
+    created_by INT,
+    FOREIGN KEY (created_by) REFERENCES user(id),
+    INDEX idx_company_active (active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Crear tabla credit_note si no existe
-CREATE TABLE IF NOT EXISTS credit_note (
+-- =====================================================
+-- 5. CREAR TABLA company_config (si no existe)
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS company_config (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    credit_note_number VARCHAR(20) UNIQUE NOT NULL,
-    invoice_id INT NOT NULL,
-    date DATETIME NOT NULL,
-    reason VARCHAR(200),
-    subtotal FLOAT NOT NULL DEFAULT 0.0,
-    discount_type VARCHAR(20) DEFAULT 'none',
-    discount_value FLOAT NOT NULL DEFAULT 0.0,
-    discount_amount FLOAT NOT NULL DEFAULT 0.0,
-    tax_rate FLOAT NOT NULL DEFAULT 0.0,
-    tax_amount FLOAT NOT NULL DEFAULT 0.0,
-    total_amount FLOAT NOT NULL,
-    status VARCHAR(20) DEFAULT 'active',
-    FOREIGN KEY (invoice_id) REFERENCES invoice(id),
-    INDEX idx_invoice_id (invoice_id),
-    INDEX idx_date (date)
-) ENGINE=InnoDB;
+    company_id INT NOT NULL UNIQUE,
+    mail_server VARCHAR(200),
+    mail_port INT DEFAULT 587,
+    mail_username VARCHAR(200),
+    mail_password VARCHAR(500),
+    mail_default_sender VARCHAR(200),
+    whatsapp_access_token VARCHAR(500),
+    whatsapp_phone_number_id VARCHAR(100),
+    whatsapp_business_account_id VARCHAR(100),
+    default_tax_rate FLOAT DEFAULT 19.0,
+    monthly_sales_target FLOAT DEFAULT 10000.0,
+    quote_number_prefix VARCHAR(10) DEFAULT 'COT',
+    invoice_number_prefix VARCHAR(10) DEFAULT 'FAC',
+    credit_note_number_prefix VARCHAR(10) DEFAULT 'NC',
+    FOREIGN KEY (company_id) REFERENCES company(id) ON DELETE CASCADE,
+    INDEX idx_company_config_company (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Crear tabla credit_note_item si no existe
-CREATE TABLE IF NOT EXISTS credit_note_item (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    credit_note_id INT NOT NULL,
-    invoice_item_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL,
-    unit_price FLOAT NOT NULL,
-    total_price FLOAT NOT NULL,
-    FOREIGN KEY (credit_note_id) REFERENCES credit_note(id) ON DELETE CASCADE,
-    FOREIGN KEY (invoice_item_id) REFERENCES invoice_item(id),
-    FOREIGN KEY (product_id) REFERENCES product(id),
-    INDEX idx_credit_note_id (credit_note_id)
-) ENGINE=InnoDB;
+-- =====================================================
+-- 6. AGREGAR company_id A TODAS LAS TABLAS
+-- =====================================================
 
--- Crear tabla audit_log si no existe
-CREATE TABLE IF NOT EXISTS audit_log (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    action VARCHAR(50) NOT NULL,
-    entity_type VARCHAR(50) NOT NULL,
-    entity_id INT NOT NULL,
-    changes TEXT,
-    ip_address VARCHAR(45),
-    user_agent VARCHAR(200),
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES user(id),
-    INDEX idx_user_id (user_id),
-    INDEX idx_entity_type (entity_type),
-    INDEX idx_created_at (created_at)
-) ENGINE=InnoDB;
+-- Tabla user
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user' AND COLUMN_NAME = 'company_id');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE user ADD COLUMN company_id INT', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+-- Crear índice si no existe
+SET @index_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'user' 
+    AND INDEX_NAME = 'idx_user_company_id');
+SET @sql = IF(@index_exists = 0, 
+    'CREATE INDEX idx_user_company_id ON user(company_id)', 
+    'SELECT ''Índice idx_user_company_id ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
--- Actualizar valores existentes: calcular subtotal y tax para cotizaciones existentes
-UPDATE quote 
-SET subtotal = total_amount,
-    tax_rate = 0.0,
-    tax_amount = 0.0
+-- Tabla client
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'client' AND COLUMN_NAME = 'company_id');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE client ADD COLUMN company_id INT', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @index_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'client' 
+    AND INDEX_NAME = 'idx_client_company_id');
+SET @sql = IF(@index_exists = 0, 
+    'CREATE INDEX idx_client_company_id ON client(company_id)', 
+    'SELECT ''Índice idx_client_company_id ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Tabla product
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'product' AND COLUMN_NAME = 'company_id');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE product ADD COLUMN company_id INT', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @index_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'product' 
+    AND INDEX_NAME = 'idx_product_company_id');
+SET @sql = IF(@index_exists = 0, 
+    'CREATE INDEX idx_product_company_id ON product(company_id)', 
+    'SELECT ''Índice idx_product_company_id ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Tabla quote
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quote' AND COLUMN_NAME = 'company_id');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE quote ADD COLUMN company_id INT', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @index_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'quote' 
+    AND INDEX_NAME = 'idx_quote_company_id');
+SET @sql = IF(@index_exists = 0, 
+    'CREATE INDEX idx_quote_company_id ON quote(company_id)', 
+    'SELECT ''Índice idx_quote_company_id ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Tabla invoice
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invoice' AND COLUMN_NAME = 'company_id');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE invoice ADD COLUMN company_id INT', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @index_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'invoice' 
+    AND INDEX_NAME = 'idx_invoice_company_id');
+SET @sql = IF(@index_exists = 0, 
+    'CREATE INDEX idx_invoice_company_id ON invoice(company_id)', 
+    'SELECT ''Índice idx_invoice_company_id ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Tabla credit_note (si existe)
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'credit_note' AND COLUMN_NAME = 'company_id');
+SET @sql = IF(@col_exists = 0, 
+    'ALTER TABLE credit_note ADD COLUMN company_id INT', 
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @index_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'credit_note' 
+    AND INDEX_NAME = 'idx_credit_note_company_id');
+SET @sql = IF(@index_exists = 0, 
+    'CREATE INDEX idx_credit_note_company_id ON credit_note(company_id)', 
+    'SELECT ''Índice idx_credit_note_company_id ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- =====================================================
+-- 7. CREAR PRIMERA EMPRESA Y ASIGNAR company_id A REGISTROS EXISTENTES
+-- =====================================================
+
+-- Verificar si ya existe una empresa
+SET @company_exists = (SELECT COUNT(*) FROM company);
+
+-- Si no existe empresa, crear una
+SET @sql = IF(@company_exists = 0,
+    'INSERT INTO company (name, active, created_at) VALUES (''Mi Empresa'', TRUE, NOW())',
+    'SELECT ''Ya existe una empresa'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Obtener el ID de la primera empresa
+SET @first_company_id = (SELECT id FROM company LIMIT 1);
+
+-- Asignar company_id a todos los registros existentes que no lo tengan
+UPDATE user SET company_id = @first_company_id WHERE company_id IS NULL;
+UPDATE client SET company_id = @first_company_id WHERE company_id IS NULL;
+UPDATE product SET company_id = @first_company_id WHERE company_id IS NULL;
+UPDATE quote SET company_id = @first_company_id WHERE company_id IS NULL;
+UPDATE invoice SET company_id = @first_company_id WHERE company_id IS NULL;
+UPDATE credit_note SET company_id = @first_company_id WHERE company_id IS NULL;
+
+-- Hacer company_id NOT NULL en todas las tablas
+ALTER TABLE user MODIFY COLUMN company_id INT NOT NULL;
+ALTER TABLE client MODIFY COLUMN company_id INT NOT NULL;
+ALTER TABLE product MODIFY COLUMN company_id INT NOT NULL;
+ALTER TABLE quote MODIFY COLUMN company_id INT NOT NULL;
+ALTER TABLE invoice MODIFY COLUMN company_id INT NOT NULL;
+ALTER TABLE credit_note MODIFY COLUMN company_id INT NOT NULL;
+
+-- Agregar foreign keys
+SET @fk_exists = (SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'user' 
+    AND CONSTRAINT_NAME = 'user_ibfk_1');
+SET @sql = IF(@fk_exists = 0,
+    'ALTER TABLE user ADD CONSTRAINT user_ibfk_1 FOREIGN KEY (company_id) REFERENCES company(id)',
+    'SELECT ''Foreign key user_ibfk_1 ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_exists = (SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'client' 
+    AND CONSTRAINT_NAME = 'client_ibfk_1');
+SET @sql = IF(@fk_exists = 0,
+    'ALTER TABLE client ADD CONSTRAINT client_ibfk_1 FOREIGN KEY (company_id) REFERENCES company(id)',
+    'SELECT ''Foreign key client_ibfk_1 ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_exists = (SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'product' 
+    AND CONSTRAINT_NAME = 'product_ibfk_1');
+SET @sql = IF(@fk_exists = 0,
+    'ALTER TABLE product ADD CONSTRAINT product_ibfk_1 FOREIGN KEY (company_id) REFERENCES company(id)',
+    'SELECT ''Foreign key product_ibfk_1 ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_exists = (SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'quote' 
+    AND CONSTRAINT_NAME = 'quote_ibfk_1');
+SET @sql = IF(@fk_exists = 0,
+    'ALTER TABLE quote ADD CONSTRAINT quote_ibfk_1 FOREIGN KEY (company_id) REFERENCES company(id)',
+    'SELECT ''Foreign key quote_ibfk_1 ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_exists = (SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'invoice' 
+    AND CONSTRAINT_NAME = 'invoice_ibfk_1');
+SET @sql = IF(@fk_exists = 0,
+    'ALTER TABLE invoice ADD CONSTRAINT invoice_ibfk_1 FOREIGN KEY (company_id) REFERENCES company(id)',
+    'SELECT ''Foreign key invoice_ibfk_1 ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_exists = (SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'credit_note' 
+    AND CONSTRAINT_NAME = 'credit_note_ibfk_1');
+SET @sql = IF(@fk_exists = 0,
+    'ALTER TABLE credit_note ADD CONSTRAINT credit_note_ibfk_1 FOREIGN KEY (company_id) REFERENCES company(id)',
+    'SELECT ''Foreign key credit_note_ibfk_1 ya existe'' AS result');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- =====================================================
+-- 8. CREAR COMPANY_CONFIG PARA LA PRIMERA EMPRESA
+-- =====================================================
+
+INSERT INTO company_config (company_id, default_tax_rate, monthly_sales_target, quote_number_prefix, invoice_number_prefix, credit_note_number_prefix)
+SELECT @first_company_id, 19.0, 10000.0, 'COT', 'FAC', 'NC'
+WHERE NOT EXISTS (SELECT 1 FROM company_config WHERE company_id = @first_company_id);
+
+-- =====================================================
+-- 9. ACTUALIZAR VALORES EXISTENTES EN quote E invoice
+-- =====================================================
+
+UPDATE quote SET subtotal = total_amount, tax_rate = 0.0, tax_amount = 0.0 
 WHERE subtotal = 0.0 AND total_amount > 0;
 
--- Actualizar valores existentes: calcular subtotal y tax para facturas existentes
-UPDATE invoice 
-SET subtotal = total_amount,
-    tax_rate = 0.0,
-    tax_amount = 0.0
+UPDATE invoice SET subtotal = total_amount, tax_rate = 0.0, tax_amount = 0.0 
 WHERE subtotal = 0.0 AND total_amount > 0;
+
+-- =====================================================
+-- MIGRACIÓN COMPLETADA
+-- =====================================================
+
+SELECT 'Migración completada exitosamente!' AS resultado;

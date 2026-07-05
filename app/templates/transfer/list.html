@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container module-list mt-3 mb-4">
+    <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="page-title"><i class="fas fa-exchange-alt"></i> Traslados entre secciones</h1>
+            <p class="page-subtitle mb-0">Traslado entre secciones del centro de acopio. Los anulados se mantienen para auditoría.</p>
+        </div>
+        <a href="{{ url_with_token('transfer.create_transfer') }}" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-plus me-1"></i> Nuevo Traslado</a>
+    </div>
+    {% set filter_action = url_with_token('transfer.list_transfers') %}
+    {% include '_list_filters.html' with context %}
+    <div class="card">
+        <div class="card-body p-0">
+            {% if transfers %}
+            <div class="table-responsive">
+                <table class="table table-modern table-hover table-sm">
+                    <thead><tr><th>Número</th><th>Fecha</th><th>Origen</th><th>Destino</th><th>Estado</th><th class="text-end" style="width:120px;">Acciones</th></tr></thead>
+                    <tbody>
+                        {% for t in transfers %}
+                        <tr>
+                            <td>{{ t.transfer_number }}</td>
+                            <td>{{ t.date.strftime('%d/%m/%Y') if t.date else '—' }}</td>
+                            <td>{{ t.warehouse_origin.name }}</td>
+                            <td>{{ t.warehouse_dest.name }}</td>
+                            <td><span class="badge rounded-pill {% if t.status == 'confirmado' %}bg-success{% elif t.status == 'anulado' %}bg-secondary{% else %}bg-warning text-dark{% endif %}" title="{% if t.status == 'anulado' %}Conservado para auditoría{% endif %}">{{ t.status|capitalize }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_with_token('transfer.view_transfer', id=t.id) }}" class="btn btn-sm btn-outline-primary">Ver</a>
+                                {% if t.status == 'borrador' %}<a href="{{ url_with_token('transfer.edit_transfer', id=t.id) }}" class="btn btn-sm btn-outline-success ms-1">Editar</a>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-module"><i class="fas fa-exchange-alt d-block"></i><p class="mb-2">No hay traslados.</p><a href="{{ url_with_token('transfer.create_transfer') }}" class="btn btn-success btn-sm"><i class="fas fa-plus me-1"></i> Crear uno</a></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

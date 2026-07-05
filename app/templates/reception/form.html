@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.reception-form .card-body { padding: 1rem 1.25rem; }
+.reception-form .form-label { margin-bottom: 0.25rem; font-size: 0.875rem; }
+.reception-form .form-control, .reception-form .form-select { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
+.reception-form .card-header { padding: 0.5rem 1rem; font-size: 0.95rem; }
+.reception-form .accordion-button { padding: 0.4rem 0.75rem; font-size: 0.9rem; }
+.reception-form .accordion-body { padding: 0.5rem 0.75rem; }
+.reception-form .table { margin-bottom: 0.5rem; }
+.reception-form .table thead th { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
+.reception-form .table td { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container reception-form mt-2 mb-3">
+    <div class="card shadow-sm mb-2">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="mb-0" style="font-size:1.1rem"><i class="fas fa-truck-loading"></i> {{ title }}</h5>
+            {% if reception %}<span class="badge bg-warning text-dark">Borrador</span>{% endif %}
+        </div>
+        <div class="card-body">
+            <form method="post" action="{% if reception %}{{ url_with_token('reception.edit_reception', id=reception.id) }}{% else %}{{ url_with_token('reception.create_reception') }}{% endif %}">
+                {{ form.hidden_tag() }}
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3">
+                        {{ form.date.label(class="form-label") }}
+                        {{ form.date(class="form-control") }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ form.guide_number.label(class="form-label") }}
+                        {{ form.guide_number(class="form-control", placeholder="Guía (opcional)") }}
+                    </div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-12">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control", rows=2) }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-success btn-sm">{{ form.submit.label.text }}</button>
+                    {% if reception %}
+                    <a href="{{ url_with_token('reception.view_reception', id=reception.id) }}" class="btn btn-outline-secondary btn-sm">Ver detalle</a>
+                    {% else %}
+                    <a href="{{ url_with_token('reception.list_receptions') }}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if reception %}
+    <div class="card shadow-sm">
+        <div class="card-header py-2">Ítems (clasificar en bodega del centro de acopio)</div>
+        <div class="card-body">
+            <p class="text-muted small mb-1">Busque un producto, selecciónelo, indique cantidad y bodega de destino y pulse Añadir.</p>
+            <div class="row g-2 align-items-end mb-1">
+                <div class="col-md-4">
+                    <label class="form-label">Buscar producto</label>
+                    <input type="text" id="productSearch" class="form-control form-control-sm" placeholder="Código, nombre o código de barras">
+                    <small id="selectedProductLabel" class="text-success" style="display:none;"></small>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Cant.</label>
+                    <input type="number" id="itemQuantity" class="form-control form-control-sm" min="1" value="1">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Clasificar en</label>
+                    <select id="itemWarehouseId" class="form-select form-select-sm">
+                        {% for w in warehouses %}
+                        <option value="{{ w.id }}">{{ w.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" id="btnAddBySearch" class="btn btn-primary btn-sm w-100"><i class="fas fa-plus"></i> Añadir</button>
+                </div>
+            </div>
+            <div id="searchResults" class="list-group list-group-flush mb-2" style="display:none; max-height:180px; overflow-y:auto;"></div>
+
+            <div class="accordion mb-2">
+                <div class="accordion-item border-start-0 border-end-0">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed py-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSelectListRec" aria-expanded="false">O elegir de la lista</button>
+                    </h2>
+                    <div id="collapseSelectListRec" class="accordion-collapse collapse">
+                        <div class="accordion-body py-1">
+                            <form method="post" action="{{ url_with_token('reception.add_reception_item', id=reception.id) }}" class="row g-2 align-items-end">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <div class="col-md-4">
+                                    <label class="form-label">Producto</label>
+                                    <select name="product_id" class="form-select form-select-sm" required>
+                                        <option value="">-- Seleccionar --</option>
+                                        {% for p in products %}
+                                        <option value="{{ p.id }}">{{ p.code }} - {{ p.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">Cant.</label>
+                                    <input type="number" name="quantity" class="form-control form-control-sm" min="1" value="1" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Clasificar en</label>
+                                    <select name="warehouse_id" class="form-select form-select-sm" required>
+                                        {% for w in warehouses %}
+                                        <option value="{{ w.id }}">{{ w.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="fas fa-plus"></i> Añadir</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if reception.items %}
+            <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead><tr><th>Producto</th><th>Cantidad / Destino</th><th></th></tr></thead>
+                <tbody>
+                    {% for item in reception.items %}
+                    <tr>
+                        <td>{{ item.product.code }} - {{ item.product.name }}</td>
+                        <td>
+                            <form method="post" action="{{ url_with_token('reception.update_reception_item', id=reception.id, item_id=item.id) }}" class="d-inline-flex align-items-center gap-1 flex-wrap form-update-item">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control form-control-sm item-qty" style="width:4rem;">
+                                <select name="warehouse_id" class="form-select form-select-sm item-wh" style="width:auto; min-width:10rem;">
+                                    {% for w in warehouses %}
+                                    <option value="{{ w.id }}" {% if w.id == item.warehouse_id %}selected{% endif %}>{{ w.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="post" action="{{ url_with_token('reception.remove_reception_item', id=reception.id, item_id=item.id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger py-0">Quitar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            <form method="post" action="{{ url_with_token('reception.confirm_reception', id=reception.id) }}" class="mt-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check"></i> Confirmar recepción</button>
+            </form>
+            {% else %}
+            <p class="text-muted small mb-0">Agregue ítems y confirme. El stock se sumará en la bodega elegida.</p>
+            <form method="post" action="{{ url_with_token('reception.confirm_reception', id=reception.id) }}" class="mt-1">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-success btn-sm mt-1" disabled title="Agregue al menos un ítem"><i class="fas fa-check"></i> Confirmar recepción</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-2">
+        <a href="{{ url_with_token('reception.list_receptions') }}" class="btn btn-outline-secondary btn-sm">Volver a recepciones</a>
+        {% if reception %}
+        <a href="{{ url_with_token('reception.view_reception', id=reception.id) }}" class="btn btn-outline-primary btn-sm">Ver detalle</a>
+        {% endif %}
+    </div>
+</div>
+{% if reception %}
+<script>
+(function() {
+    var searchInput = document.getElementById('productSearch');
+    var quantityInput = document.getElementById('itemQuantity');
+    var warehouseSelect = document.getElementById('itemWarehouseId');
+    var resultsDiv = document.getElementById('searchResults');
+    var selectedLabel = document.getElementById('selectedProductLabel');
+    var addItemUrl = "{{ url_with_token('reception.add_reception_item', id=reception.id) }}";
+    var csrf = "{{ csrf_token }}";
+    var searchTimeout = null;
+    var selectedProductId = null;
+
+    function clearSelection() {
+        selectedProductId = null;
+        if (selectedLabel) { selectedLabel.style.display = 'none'; selectedLabel.textContent = ''; }
+    }
+    function setSelection(productId, label) {
+        selectedProductId = productId;
+        if (selectedLabel) { selectedLabel.textContent = 'Seleccionado: ' + label; selectedLabel.style.display = 'block'; }
+        resultsDiv.style.display = 'none';
+        resultsDiv.innerHTML = '';
+        if (quantityInput) quantityInput.focus();
+    }
+
+    function doSearch(callback) {
+        var q = searchInput.value.trim();
+        if (!q) { clearSelection(); resultsDiv.style.display = 'none'; resultsDiv.innerHTML = ''; if (callback) callback([]); return; }
+        var url = "{{ url_for('delivery.product_lookup') }}?q=" + encodeURIComponent(q);
+        fetch(url).then(function(r){ return r.json(); }).then(function(data){
+            var products = data.products || [];
+            resultsDiv.innerHTML = '';
+            if (products.length === 0) {
+                resultsDiv.innerHTML = '<div class="list-group-item">Sin resultados</div>';
+            } else {
+                products.forEach(function(p) {
+                    var label = p.code + ' - ' + p.name;
+                    var el = document.createElement('a');
+                    el.href = '#';
+                    el.className = 'list-group-item list-group-item-action';
+                    el.textContent = label;
+                    el.onclick = function(e) { e.preventDefault(); setSelection(p.id, label); };
+                    resultsDiv.appendChild(el);
+                });
+            }
+            resultsDiv.style.display = 'block';
+            if (callback) callback(products);
+        });
+    }
+    function addItem(productId) {
+        var qty = parseInt(quantityInput.value, 10) || 1;
+        var whId = warehouseSelect.value;
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = addItemUrl;
+        form.innerHTML = '<input type="hidden" name="csrf_token" value="' + csrf + '"><input type="hidden" name="product_id" value="' + productId + '"><input type="hidden" name="quantity" value="' + qty + '"><input type="hidden" name="warehouse_id" value="' + whId + '">';
+        document.body.appendChild(form);
+        form.submit();
+    }
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (searchTimeout) clearTimeout(searchTimeout);
+            doSearch(function(products) { if (products.length === 1) setSelection(products[0].id, products[0].code + ' - ' + products[0].name); });
+        }
+    });
+    searchInput.addEventListener('input', function() {
+        clearSelection();
+        if (searchTimeout) clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(doSearch, 250);
+    });
+    document.getElementById('btnAddBySearch').onclick = function() {
+        if (searchTimeout) clearTimeout(searchTimeout);
+        if (selectedProductId) addItem(selectedProductId);
+        else doSearch();
+    };
+
+    document.querySelectorAll('.form-update-item').forEach(function(form) {
+        var qty = form.querySelector('.item-qty');
+        var wh = form.querySelector('.item-wh');
+        function submitForm() { form.submit(); }
+        if (qty) qty.addEventListener('change', submitForm);
+        if (wh) wh.addEventListener('change', submitForm);
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

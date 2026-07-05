@@ -85,7 +85,9 @@ instance/temp_pdfs/
 
 # Logs
 *.log
+debug-*.log
 logs/
+ocr_capture.json
 
 # Node modules (si hay)
 node_modules/

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-warehouse"></i> {{ title }}</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.name.label(class="form-label") }}
+                    {{ form.name(class="form-control") }}
+                    {% if form.name.errors %}{% for e in form.name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}{% endif %}
+                </div>
+                <div class="mb-3">
+                    {{ form.code.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.code(class="form-control", id="warehouseCode", placeholder="Opcional: se genera desde el nombre") }}
+                        <button type="button" class="btn btn-outline-secondary" id="btnGenerateCode" title="Generar código desde el nombre de la sección">
+                            Generar
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    {{ form.warehouse_type.label(class="form-label") }}
+                    {{ form.warehouse_type(class="form-select") }}
+                </div>
+                <div class="mb-3">
+                    {{ form.address.label(class="form-label") }}
+                    {{ form.address(class="form-control", rows=2) }}
+                </div>
+                <div class="mb-3 form-check">
+                    {{ form.active(class="form-check-input") }}
+                    {{ form.active.label(class="form-check-label") }}
+                </div>
+                <button type="submit" class="btn btn-success">{{ form.submit.label.text }}</button>
+                <a href="{{ url_with_token('admin.list_warehouses') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var nameInput = document.querySelector('input[name="name"]');
+    var codeInput = document.getElementById('warehouseCode');
+    var btn = document.getElementById('btnGenerateCode');
+    if (!nameInput || !codeInput || !btn) return;
+    function codeFromName(name) {
+        if (!name || !name.trim()) return '';
+        var s = name.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        var words = s.split(/\s+/).filter(function(w) { return w.length >= 2; });
+        var stop = ['DE', 'LA', 'EL', 'EN', 'Y', 'DEL', 'LOS', 'LAS'];
+        words = words.filter(function(w) { return stop.indexOf(w) === -1; });
+        if (!words.length) return s.substring(0, 8).replace(/\s/g, '-');
+        return words.slice(0, 3).map(function(w) { return w.length >= 3 ? w.substring(0, 3) : w; }).join('-').substring(0, 20);
+    }
+    btn.onclick = function() {
+        var name = nameInput.value;
+        codeInput.value = codeFromName(name);
+    };
+})();
+</script>
+{% endblock %}
