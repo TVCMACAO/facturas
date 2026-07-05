@@ -497,6 +497,7 @@
         </div>
         <div class="sidebar-footer">
             <a href="{{ url_for('main.logout') }}" class="btn btn-sm btn-logout"><i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión</a>
+            <div class="text-center mt-2" style="font-size:0.65rem;opacity:0.75;">build {{ app_build }}</div>
         </div>
         {% else %}
         <div class="p-3">

@@ -119,6 +119,11 @@ def create_app(config_class=None):
     app.register_blueprint(credit_notes_bp)
 
     @app.context_processor
+    def inject_app_build():
+        from app.version import APP_BUILD_ID
+        return {'app_build': APP_BUILD_ID}
+
+    @app.context_processor
     def inject_csrf():
         from flask_wtf.csrf import generate_csrf
         return {'csrf_token': generate_csrf()}

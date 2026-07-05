@@ -15,6 +15,14 @@ from flask_mail import Message
 
 main = Blueprint('main', __name__)
 
+
+@main.route('/health')
+@main.route('/api/health')
+def health_check():
+    from app.version import APP_BUILD_ID
+    return {'status': 'ok', 'build': APP_BUILD_ID}, 200
+
+
 @main.route('/', methods=['GET', 'POST'])
 @main.route('/index', methods=['GET', 'POST'])
 def index():
