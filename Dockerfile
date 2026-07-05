@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-ARG APP_BUILD_ID=unknown
+ARG APP_BUILD_ID=2026-07-05-v2-company-id
 ENV APP_BUILD_ID=${APP_BUILD_ID}
 
 EXPOSE 5000

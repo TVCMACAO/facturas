@@ -536,18 +536,24 @@ def _perform_quote_to_invoice_conversion(quote, quote_id):
         flash('La cotización no tiene ítems. Agregue productos antes de convertir a factura.', 'warning')
         return redirect_to_view_quote(quote_id)
 
-    company_id = quote.company_id or get_current_company_id() or resolve_entity_company_id(quote)
+    company_id = get_current_company_id() or quote.company_id or resolve_entity_company_id(quote)
     if not company_id:
         flash('No se pudo determinar la empresa de la cotización. Contacte al administrador.', 'danger')
         return redirect_to_view_quote(quote_id)
 
-    if not quote.company_id:
-        quote.company_id = company_id
-    if quote.client_id:
-        client = db.session.get(Client, quote.client_id)
-        if client and not client.company_id:
-            client.company_id = company_id
-    db.session.flush()
+    try:
+        if not quote.company_id:
+            quote.company_id = company_id
+        if quote.client_id:
+            client = db.session.get(Client, quote.client_id)
+            if client and not client.company_id:
+                client.company_id = company_id
+        db.session.flush()
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception('Error al asignar company_id a cotización %s: %s', quote.id, exc)
+        flash('No se pudo preparar la cotización para facturar. Contacte al administrador.', 'danger')
+        return redirect_to_view_quote(quote_id)
 
     today = datetime.date.today()
     today_dt = datetime.datetime.combine(today, datetime.time.min)
@@ -609,15 +615,24 @@ def _perform_quote_to_invoice_conversion(quote, quote_id):
 @quotes_bp.route('/<int:id>/<token>/convert_to_invoice', methods=['GET', 'POST'])
 @login_required
 def convert_to_invoice(id, token=None):
-    if token and not validate_view_token(token, id, 'quote'):
-        from flask import abort
-        abort(404)
-    elif token is None:
-        from flask import abort
-        abort(404)
+    try:
+        if token and not validate_view_token(token, id, 'quote'):
+            from flask import abort
+            abort(404)
+        elif token is None:
+            from flask import abort
+            abort(404)
 
-    quote = ensure_company_id(id, Quote)
-    return _perform_quote_to_invoice_conversion(quote, id)
+        quote = ensure_company_id(id, Quote)
+        return _perform_quote_to_invoice_conversion(quote, id)
+    except Exception as exc:
+        db.session.rollback()
+        from werkzeug.exceptions import HTTPException
+        if isinstance(exc, HTTPException):
+            raise
+        current_app.logger.exception('Error inesperado en convert_to_invoice(%s): %s', id, exc)
+        flash('No se pudo crear la factura. Intente de nuevo o contacte al administrador.', 'danger')
+        return redirect_to_view_quote(id)
 
 @quotes_bp.route('/<int:id>/send_email', methods=['GET', 'POST'])
 @quotes_bp.route('/<int:id>/<token>/send_email', methods=['GET', 'POST'])

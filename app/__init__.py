@@ -76,9 +76,15 @@ def create_app(config_class=None):
         return serializer.dumps(data, salt='view-token')
 
     @app.route('/health')
+    @app.route('/api/health')
     def health():
         from app.version import APP_BUILD_ID
         return {'status': 'ok', 'build': APP_BUILD_ID}, 200
+
+    with app.app_context():
+        from app.startup_tasks import backfill_null_company_ids
+        backfill_null_company_ids(app)
+        app.logger.info('App build=%s', __import__('app.version', fromlist=['APP_BUILD_ID']).APP_BUILD_ID)
 
     from app.routes.main import main as main_blueprint
     app.register_blueprint(main_blueprint)
@@ -185,8 +191,11 @@ def create_app(config_class=None):
 
     @app.errorhandler(404)
     def not_found_error(error):
-        from flask import render_template, redirect, url_for
+        from flask import render_template, redirect, url_for, request, jsonify
         from flask_login import current_user
+        if request.path in ('/health', '/api/health'):
+            from app.version import APP_BUILD_ID
+            return jsonify({'status': 'ok', 'build': APP_BUILD_ID}), 200
         if not current_user.is_authenticated:
             return redirect(url_for('main.login'))
         return render_template('errors/404.html'), 404
