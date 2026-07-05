@@ -19,6 +19,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# BUILD_COMMIT: pasar en Easypanel como "Build Argument" para invalidar caché de Docker.
+ARG BUILD_COMMIT=5933dba
+RUN echo "Build commit pin: ${BUILD_COMMIT}"
+
 # Cambiar SOURCE_REV en cada release fuerza a Docker a copiar el código de nuevo.
 COPY SOURCE_REV /tmp/SOURCE_REV
 RUN echo "Deploying source revision: $(cat /tmp/SOURCE_REV)"
@@ -27,6 +31,7 @@ COPY . .
 
 ARG APP_BUILD_ID=2026-07-05-v4-deploy-fix
 ENV APP_BUILD_ID=${APP_BUILD_ID}
+ENV BUILD_COMMIT=${BUILD_COMMIT}
 
 EXPOSE 5000
 
