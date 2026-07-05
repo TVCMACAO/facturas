@@ -175,3 +175,76 @@ def test_convert_to_invoice_creates_invoice(app, client):
         assert invoice is not None
         assert invoice.invoice_number == '0118'
         assert invoice.items.count() == 1
+
+
+def test_convert_to_invoice_works_with_get(app, client):
+    """Enlaces GET antiguos (<a href>) deben seguir convirtiendo la cotización."""
+    from app import db
+    from app.models import Company, User, Role, Client, Product, Quote, QuoteItem, Invoice
+    from app.routes.quote import generate_view_token
+
+    with app.app_context():
+        role = Role(code='admin', label='Administrador')
+        db.session.add(role)
+        db.session.flush()
+
+        company = Company(name='Empresa GET', active=True)
+        db.session.add(company)
+        db.session.flush()
+
+        user = User(
+            username='admin_get',
+            email='get@test.com',
+            company_id=company.id,
+            role_id=role.id,
+            active=True,
+        )
+        user.set_password('pass123')
+        db.session.add(user)
+
+        cl = Client(company_id=company.id, name='Cliente GET', email='getcl@test.com')
+        product = Product(
+            company_id=company.id,
+            code='P002',
+            name='Producto GET',
+            price=50.0,
+            stock=5,
+        )
+        db.session.add_all([cl, product])
+        db.session.flush()
+
+        quote = Quote(
+            company_id=company.id,
+            quote_number='0200',
+            date=datetime.datetime.utcnow(),
+            client_id=cl.id,
+            subtotal=100.0,
+            total_amount=100.0,
+            status='pendiente',
+        )
+        db.session.add(quote)
+        db.session.flush()
+        db.session.add(QuoteItem(
+            quote_id=quote.id,
+            product_id=product.id,
+            quantity=2,
+            unit_price=50.0,
+            total_price=100.0,
+        ))
+        db.session.commit()
+
+        quote_id = quote.id
+        token = generate_view_token(quote_id, 'quote')
+
+    client.post('/', data={'username': 'admin_get', 'password': 'pass123'}, follow_redirects=True)
+    response = client.get(
+        f'/quotes/{quote_id}/{token}/convert_to_invoice',
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+
+    with app.app_context():
+        invoice = Invoice.query.filter_by(quote_id=quote_id).first()
+        assert invoice is not None
+        assert invoice.invoice_number == '0118'

@@ -520,31 +520,9 @@ def generate_quote_pdf(id, token=None):
     # Return for download
     return send_from_directory(os.path.join(current_app.instance_path, 'temp_pdfs'), filename, as_attachment=True)
 
-@quotes_bp.route('/<int:id>/convert_to_invoice', methods=['GET'])
-@quotes_bp.route('/<int:id>/<token>/convert_to_invoice', methods=['GET'])
-@login_required
-def convert_to_invoice_get_deprecated(id, token=None):
-    """Enlaces GET antiguos: redirigir a la vista de cotización."""
-    flash('Para convertir a factura use el botón en la cotización.', 'info')
-    if token and validate_view_token(token, id, 'quote'):
-        return redirect_to_view_quote(id)
-    quote = ensure_company_id(id, Quote)
-    return redirect_to_view_quote(quote.id)
 
-
-@quotes_bp.route('/<int:id>/convert_to_invoice', methods=['POST'])
-@quotes_bp.route('/<int:id>/<token>/convert_to_invoice', methods=['POST'])
-@login_required
-def convert_to_invoice(id, token=None):
-    if token and not validate_view_token(token, id, 'quote'):
-        from flask import abort
-        abort(404)
-    elif token is None:
-        from flask import abort
-        abort(404)
-
-    quote = ensure_company_id(id, Quote)
-
+def _perform_quote_to_invoice_conversion(quote, quote_id):
+    """Convierte una cotización en factura. Devuelve redirect o None si ya redirigió por estado previo."""
     if quote.status == 'facturada':
         flash('Esta cotización ya ha sido convertida a factura.', 'info')
         existing_invoice = Invoice.query.filter_by(quote_id=quote.id).first()
@@ -552,11 +530,11 @@ def convert_to_invoice(id, token=None):
             from app.routes.invoice import generate_view_token as gen_inv_token
             inv_token = gen_inv_token(existing_invoice.id, 'invoice')
             return redirect(url_for('invoices.view_invoice', id=existing_invoice.id, token=inv_token))
-        return redirect_to_view_quote(id)
+        return redirect_to_view_quote(quote_id)
 
     if not quote.items.count():
         flash('La cotización no tiene ítems. Agregue productos antes de convertir a factura.', 'warning')
-        return redirect_to_view_quote(id)
+        return redirect_to_view_quote(quote_id)
 
     today = datetime.date.today()
     today_dt = datetime.datetime.combine(today, datetime.time.min)
@@ -606,12 +584,27 @@ def convert_to_invoice(id, token=None):
             if attempt < 2:
                 continue
             flash('No se pudo crear la factura: el número de factura ya existe. Intente de nuevo.', 'danger')
-            return redirect_to_view_quote(id)
+            return redirect_to_view_quote(quote_id)
         except Exception as exc:
             db.session.rollback()
             current_app.logger.exception('Error al convertir cotización %s a factura: %s', quote.id, exc)
             flash('No se pudo crear la factura. Verifique los datos e intente de nuevo.', 'danger')
-            return redirect_to_view_quote(id)
+            return redirect_to_view_quote(quote_id)
+
+
+@quotes_bp.route('/<int:id>/convert_to_invoice', methods=['GET', 'POST'])
+@quotes_bp.route('/<int:id>/<token>/convert_to_invoice', methods=['GET', 'POST'])
+@login_required
+def convert_to_invoice(id, token=None):
+    if token and not validate_view_token(token, id, 'quote'):
+        from flask import abort
+        abort(404)
+    elif token is None:
+        from flask import abort
+        abort(404)
+
+    quote = ensure_company_id(id, Quote)
+    return _perform_quote_to_invoice_conversion(quote, id)
 
 @quotes_bp.route('/<int:id>/send_email', methods=['GET', 'POST'])
 @quotes_bp.route('/<int:id>/<token>/send_email', methods=['GET', 'POST'])
