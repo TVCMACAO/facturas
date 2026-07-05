@@ -48,4 +48,26 @@ def test_ensure_company_id_blocks_cross_tenant_quote(app):
             login_user(u1)
             with pytest.raises(HTTPException) as exc_info:
                 ensure_company_id(quote_id, Quote)
-            assert exc_info.value.code == 404
+            assert exc_info.value.code == 403
+
+
+def test_resolve_entity_company_id_from_client(app):
+    from app import db
+    from app.models import Company, Client, Quote
+    from app.tenant import resolve_entity_company_id
+
+    with app.app_context():
+        company = Company(name='Empresa Cliente', active=True)
+        db.session.add(company)
+        db.session.flush()
+        client = Client(company_id=company.id, name='Cliente', email='c@test.com')
+        quote = Quote(
+            quote_number='LEG-001',
+            date=datetime.datetime.utcnow(),
+            client_id=client.id,
+            total_amount=10.0,
+        )
+        quote.company_id = None
+        quote.client = client
+
+        assert resolve_entity_company_id(quote) == company.id

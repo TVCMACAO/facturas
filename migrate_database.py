@@ -339,6 +339,14 @@ def migrate_database():
                                 
                                 if null_count > 0:
                                     print(f"[INFO] Actualizando {null_count} registros sin company_id...")
+                                    if table_name == 'quote':
+                                        conn.execute(text("""
+                                            UPDATE quote q
+                                            INNER JOIN client c ON q.client_id = c.id
+                                            SET q.company_id = c.company_id
+                                            WHERE q.company_id IS NULL AND c.company_id IS NOT NULL
+                                        """))
+                                        conn.commit()
                                     result = conn.execute(text(f"""
                                         UPDATE {table_name} 
                                         SET {col_name} = {first_company.id}

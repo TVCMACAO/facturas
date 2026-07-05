@@ -1,8 +1,8 @@
 """Helper functions for multi-tenant architecture"""
-from flask import current_app
+from flask import abort
 from flask_login import current_user
 from functools import wraps
-from flask import abort
+from app import db
 
 
 def get_company_default_tax_rate(company_id):
@@ -20,6 +20,18 @@ def get_current_company_id():
     if current_user.is_authenticated:
         return current_user.company_id
     return None
+
+
+def resolve_entity_company_id(entity):
+    """Resuelve company_id de una entidad, incluyendo registros legacy con company_id NULL."""
+    if not entity:
+        return None
+    if getattr(entity, 'company_id', None):
+        return entity.company_id
+    client = getattr(entity, 'client', None)
+    if client and getattr(client, 'company_id', None):
+        return client.company_id
+    return get_current_company_id()
 
 def is_super_admin():
     """Verifica si el usuario actual es super_admin"""
@@ -73,8 +85,19 @@ def ensure_company_id(entity_id, model_class):
             abort(403)
         return entity
     
-    # Para otras entidades, usar company_id
-    entity = model_class.query.filter_by(id=entity_id, company_id=company_id).first_or_404()
+    # Para otras entidades, usar company_id (incluye registros legacy con company_id NULL)
+    entity = model_class.query.filter_by(id=entity_id, company_id=company_id).first()
+    if entity:
+        return entity
+
+    entity = db.session.get(model_class, entity_id)
+    if not entity:
+        abort(404)
+
+    resolved = resolve_entity_company_id(entity)
+    if resolved != company_id:
+        abort(403)
+
     return entity
 
 def ensure_company_access_decorator(f):
