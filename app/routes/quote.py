@@ -523,6 +523,21 @@ def generate_quote_pdf(id, token=None):
 
 def _perform_quote_to_invoice_conversion(quote, quote_id):
     """Convierte una cotización en factura. Devuelve redirect o None si ya redirigió por estado previo."""
+    from app.debug_agent_log import agent_log
+    # #region agent log
+    agent_log(
+        'quote.py:_perform_quote_to_invoice_conversion:entry',
+        'conversion started',
+        {
+            'quote_id': quote_id,
+            'quote_company_id': getattr(quote, 'company_id', None),
+            'quote_client_id': getattr(quote, 'client_id', None),
+            'quote_status': getattr(quote, 'status', None),
+            'items_count': quote.items.count() if quote else None,
+        },
+        hypothesis_id='H1-H3',
+    )
+    # #endregion
     if quote.status == 'facturada':
         flash('Esta cotización ya ha sido convertida a factura.', 'info')
         existing_invoice = Invoice.query.filter_by(quote_id=quote.id).first()
@@ -537,6 +552,20 @@ def _perform_quote_to_invoice_conversion(quote, quote_id):
         return redirect_to_view_quote(quote_id)
 
     company_id = get_current_company_id() or quote.company_id or resolve_entity_company_id(quote)
+    # #region agent log
+    agent_log(
+        'quote.py:_perform_quote_to_invoice_conversion:company_id',
+        'resolved company_id',
+        {
+            'quote_id': quote_id,
+            'company_id': company_id,
+            'current_user_company_id': get_current_company_id(),
+            'quote_company_id': quote.company_id,
+            'resolved': resolve_entity_company_id(quote),
+        },
+        hypothesis_id='H1',
+    )
+    # #endregion
     if not company_id:
         flash('No se pudo determinar la empresa de la cotización. Contacte al administrador.', 'danger')
         return redirect_to_view_quote(quote_id)
@@ -598,14 +627,30 @@ def _perform_quote_to_invoice_conversion(quote, quote_id):
             from app.routes.invoice import generate_view_token as gen_inv_token
             inv_token = gen_inv_token(new_invoice.id, 'invoice')
             return redirect(url_for('invoices.view_invoice', id=new_invoice.id, token=inv_token))
-        except IntegrityError:
+        except IntegrityError as exc:
             db.session.rollback()
+            # #region agent log
+            agent_log(
+                'quote.py:_perform_quote_to_invoice_conversion:integrity_error',
+                'IntegrityError on invoice create',
+                {'quote_id': quote_id, 'attempt': attempt, 'error': str(exc.orig) if exc.orig else str(exc)},
+                hypothesis_id='H3-H6',
+            )
+            # #endregion
             if attempt < 2:
                 continue
             flash('No se pudo crear la factura: el número de factura ya existe. Intente de nuevo.', 'danger')
             return redirect_to_view_quote(quote_id)
         except Exception as exc:
             db.session.rollback()
+            # #region agent log
+            agent_log(
+                'quote.py:_perform_quote_to_invoice_conversion:exception',
+                'unexpected error on invoice create',
+                {'quote_id': quote_id, 'attempt': attempt, 'error_type': type(exc).__name__, 'error': str(exc)},
+                hypothesis_id='H3-H6',
+            )
+            # #endregion
             current_app.logger.exception('Error al convertir cotización %s a factura: %s', quote.id, exc)
             flash('No se pudo crear la factura. Verifique los datos e intente de nuevo.', 'danger')
             return redirect_to_view_quote(quote_id)
@@ -615,6 +660,15 @@ def _perform_quote_to_invoice_conversion(quote, quote_id):
 @quotes_bp.route('/<int:id>/<token>/convert_to_invoice', methods=['GET', 'POST'])
 @login_required
 def convert_to_invoice(id, token=None):
+    from app.debug_agent_log import agent_log
+    # #region agent log
+    agent_log(
+        'quote.py:convert_to_invoice:entry',
+        'route hit',
+        {'quote_id': id, 'has_token': bool(token), 'method': request.method},
+        hypothesis_id='H2-H4',
+    )
+    # #endregion
     try:
         if token and not validate_view_token(token, id, 'quote'):
             from flask import abort
@@ -624,15 +678,42 @@ def convert_to_invoice(id, token=None):
             abort(404)
 
         quote = ensure_company_id(id, Quote)
+        # #region agent log
+        agent_log(
+            'quote.py:convert_to_invoice:after_ensure',
+            'ensure_company_id ok',
+            {'quote_id': id, 'quote_company_id': getattr(quote, 'company_id', None)},
+            hypothesis_id='H2',
+        )
+        # #endregion
         return _perform_quote_to_invoice_conversion(quote, id)
     except Exception as exc:
         db.session.rollback()
         from werkzeug.exceptions import HTTPException
         if isinstance(exc, HTTPException):
             raise
+        # #region agent log
+        agent_log(
+            'quote.py:convert_to_invoice:outer_exception',
+            'uncaught in outer handler',
+            {'quote_id': id, 'error_type': type(exc).__name__, 'error': str(exc)},
+            hypothesis_id='H4-H5',
+        )
+        # #endregion
         current_app.logger.exception('Error inesperado en convert_to_invoice(%s): %s', id, exc)
         flash('No se pudo crear la factura. Intente de nuevo o contacte al administrador.', 'danger')
-        return redirect_to_view_quote(id)
+        try:
+            return redirect_to_view_quote(id)
+        except Exception as redirect_exc:
+            # #region agent log
+            agent_log(
+                'quote.py:convert_to_invoice:redirect_failed',
+                'redirect_to_view_quote failed after error',
+                {'quote_id': id, 'error_type': type(redirect_exc).__name__, 'error': str(redirect_exc)},
+                hypothesis_id='H4',
+            )
+            # #endregion
+            raise redirect_exc from exc
 
 @quotes_bp.route('/<int:id>/send_email', methods=['GET', 'POST'])
 @quotes_bp.route('/<int:id>/<token>/send_email', methods=['GET', 'POST'])
